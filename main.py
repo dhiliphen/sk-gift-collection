@@ -48,7 +48,9 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 app = FastAPI(title="Inventory Management API", version="1.0.0")
 app.add_middleware(AuthMiddleware)
-app.mount("/static", StaticFiles(directory=os.path.join(_base, "app", "static")), name="static")
+_static_dir = os.path.join(_base, "app", "static")
+if os.path.isdir(_static_dir):
+    app.mount("/static", StaticFiles(directory=_static_dir), name="static")
 templates = Jinja2Templates(directory=os.path.join(_base, "app", "templates"))
 
 app.include_router(auth_router.router)
