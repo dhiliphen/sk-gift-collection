@@ -52,7 +52,7 @@
   }
 
   /* ── FONT SIZE ────────────────────────────────────────── */
-  html { font-size: 14px; }
+  html { font-size: 16px; }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -201,6 +201,67 @@
     border-color: var(--accent);
     color: var(--accent);
     z-index: 1;
+  }
+
+  /* PAGE VIEW LAYOUT */
+  .page-view {
+    padding: 2rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .page-view-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .back-btn {
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 0.4rem;
+    display: block;
+    transition: color 0.2s;
+  }
+
+  .back-btn:hover { color: var(--accent); }
+
+  .page-view-title {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--text);
+  }
+
+  .page-view-subtitle {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+
+  .page-view-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .page-view-card .toolbar {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
   }
 
   /* DASHBOARD */
@@ -1114,16 +1175,7 @@
 <body>
 
 <header>
-  <div class="logo">SK GIFT<span> COLLECTION</span></div>
-  <div class="nav-tabs">
-    <button class="nav-tab active" id="tab-dashboard"  onclick="switchView('dashboard')">Dashboard</button>
-    <button class="nav-tab" id="tab-inventory"  onclick="switchView('inventory')">Inventory</button>
-    <button class="nav-tab" id="tab-billing"    onclick="switchView('billing')">Sales Bills</button>
-    <button class="nav-tab" id="tab-purchases"  onclick="switchView('purchases')">Purchases</button>
-    <button class="nav-tab" id="tab-customers"  onclick="switchView('customers')">Customers</button>
-    <button class="nav-tab" id="tab-suppliers"  onclick="switchView('suppliers')">Suppliers</button>
-    <button class="nav-tab" id="tab-settings"   onclick="switchView('settings')">Settings</button>
-  </div>
+  <div class="logo" onclick="switchView('dashboard')" style="cursor:pointer;" title="Go to Dashboard">SK<span>.</span>GIFT</div>
   <div class="header-actions">
     <div class="font-controls">
       <button class="icon-btn" onclick="adjustFont(-1)" title="Decrease font size">−</button>
@@ -1136,7 +1188,6 @@
       <button class="theme-btn active" id="theme-sandal" onclick="setTheme('sandal')" title="Sandal">S</button>
     </div>
     <button class="btn btn-ghost" onclick="openSettings()" title="Business Settings" style="letter-spacing:1px;">⚙ SETTINGS</button>
-    <button class="btn btn-ghost" id="btn-new" onclick="handleNew()">+ NEW ITEM</button>
     <form method="post" action="/logout" style="margin:0;">
       <button type="submit" class="btn btn-ghost" style="letter-spacing:1px;" title="Sign out">⏻ LOGOUT</button>
     </form>
@@ -1144,28 +1195,27 @@
 </header>
 
 
-<div class="stats-bar">
-  <div class="stat-card">
-    <div class="stat-label">Total Items</div>
-    <div class="stat-value accent" id="stat-total">—</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Portfolio Value</div>
-    <div class="stat-value" id="stat-value">—</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Low Stock</div>
-    <div class="stat-value warn" id="stat-low">—</div>
-  </div>
-  <div class="stat-card">
-    <div class="stat-label">Categories</div>
-    <div class="stat-value" id="stat-cats">—</div>
-  </div>
-</div>
-
 <!-- DASHBOARD VIEW -->
 <div id="view-dashboard" class="view active">
   <div class="dashboard-page">
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Total Items</div>
+        <div class="stat-value accent" id="stat-total">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Portfolio Value</div>
+        <div class="stat-value" id="stat-value">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Low Stock</div>
+        <div class="stat-value warn" id="stat-low">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Categories</div>
+        <div class="stat-value" id="stat-cats">—</div>
+      </div>
+    </div>
     <div class="dashboard-heading">SK GIFT COLLECTION</div>
     <div class="dashboard-subheading">Welcome back. What would you like to do today?</div>
     <div class="dashboard-cards">
@@ -1175,7 +1225,7 @@
         <div class="dash-card-link">Manage Inventory →</div>
       </div>
       <div class="dash-card primary" onclick="switchView('billing')">
-        <div class="dash-card-label">New Sale</div>
+        <div class="dash-card-label">Sales Bills</div>
         <div class="dash-card-desc">Create a new bill and record a sale for a customer.</div>
         <div class="dash-card-link">Create New Bill →</div>
       </div>
@@ -1189,170 +1239,120 @@
         <div class="dash-card-desc">View and manage your customer list.</div>
         <div class="dash-card-link">View Customers →</div>
       </div>
+      <div class="dash-card" onclick="switchView('suppliers')">
+        <div class="dash-card-label">Suppliers</div>
+        <div class="dash-card-desc">Manage your product suppliers and contacts.</div>
+        <div class="dash-card-link">View Suppliers →</div>
+      </div>
+      <div class="dash-card" onclick="switchView('settings')">
+        <div class="dash-card-label">Settings</div>
+        <div class="dash-card-desc">Manage product categories and units of measure.</div>
+        <div class="dash-card-link">Open Settings →</div>
+      </div>
     </div>
   </div>
 </div>
 
 <div id="view-inventory" class="view">
-<div class="layout">
-  <!-- SIDEBAR: Add Item Form -->
-  <aside class="sidebar">
-    <div class="sidebar-title">Add New Item</div>
-
-    <div class="form-group">
-      <label>Product Name *</label>
-      <input type="text" id="f-name" placeholder="e.g. USB-C Cable">
-    </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label>Category</label>
-        <select id="f-category"><option value="">— select —</option></select>
+  <div class="page-view">
+    <div class="page-view-header">
+      <div>
+        <button class="back-btn" onclick="switchView('dashboard')">← Dashboard</button>
+        <div class="page-view-title">Inventory</div>
+        <div class="page-view-subtitle">Manage your products and stock levels</div>
       </div>
-      <div class="form-group">
-        <label>Unit</label>
-        <select id="f-unit"><option value="">— select —</option></select>
-      </div>
+      <button class="btn btn-primary" onclick="openAddModal()">+ New Item</button>
     </div>
-
-    <div class="form-group">
-      <label>Supplier</label>
-      <input type="text" id="f-supplier" placeholder="Supplier name" list="suppliers-datalist">
-    </div>
-
-    <div class="form-group">
-      <label>Opening Quantity</label>
-      <input type="number" id="f-quantity" placeholder="0" min="0">
-    </div>
-
-    <hr class="divider">
-    <div class="sidebar-title">Pricing</div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label>Cost Price</label>
-        <input type="number" id="f-cost" placeholder="0.00" min="0" step="0.01">
+    <div class="page-view-card">
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon">/</span>
+          <input type="text" id="search" placeholder="Search items..." oninput="filterItems()">
+        </div>
+        <div class="filter-group" id="filter-group">
+          <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+          <button class="filter-btn" onclick="setFilter('low', this)">⚠ Low Stock</button>
+        </div>
+        <button class="btn btn-ghost" onclick="exportInventoryExcel()" style="white-space:nowrap;">↓ Export Excel</button>
       </div>
-      <div class="form-group">
-        <label>Wholesale Price</label>
-        <input type="number" id="f-wholesale" placeholder="0.00" min="0" step="0.01">
-      </div>
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Dealer Price</label>
-        <input type="number" id="f-dealer" placeholder="0.00" min="0" step="0.01">
-      </div>
-      <div class="form-group">
-        <label>Retail Price</label>
-        <input type="number" id="f-selling" placeholder="0.00" min="0" step="0.01">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Product</th>
+              <th>Supplier</th>
+              <th>Quantity</th>
+              <th>Cost</th>
+              <th>Wholesale</th>
+              <th>Dealer</th>
+              <th>Retail</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="inventory-table">
+            <tr>
+              <td colspan="9">
+                <div class="empty-state">
+                  <div class="empty-icon">[  ]</div>
+                  <div>Loading inventory...</div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
-
-    <div class="form-row">
-      <div class="form-group">
-        <label>HSN Code</label>
-        <input type="text" id="f-hsn" placeholder="e.g. 4420">
-      </div>
-      <div class="form-group">
-        <label>GST Rate (%)</label>
-        <select id="f-gst">
-          <option value="0">0%</option>
-          <option value="5">5%</option>
-          <option value="12" selected>12%</option>
-          <option value="18">18%</option>
-          <option value="28">28%</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="form-group">
-      <label>Low Stock Alert (qty)</label>
-      <input type="number" id="f-threshold" placeholder="10" min="0">
-    </div>
-
-    <button class="btn btn-primary" onclick="addItem()">ADD TO INVENTORY</button>
-  </aside>
-
-  <!-- MAIN: Inventory Table -->
-  <main class="main">
-    <div class="toolbar">
-      <div class="search-box">
-        <span class="search-icon">/</span>
-        <input type="text" id="search" placeholder="Search items..." oninput="filterItems()">
-      </div>
-      <div class="filter-group" id="filter-group">
-        <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
-        <button class="filter-btn" onclick="setFilter('low', this)">⚠ Low Stock</button>
-      </div>
-      <button class="btn btn-ghost" onclick="exportInventoryExcel()" style="white-space:nowrap;">↓ EXPORT EXCEL</button>
-    </div>
-
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Product</th>
-            <th>Supplier</th>
-            <th>Quantity</th>
-            <th>Cost</th>
-            <th>Wholesale</th>
-            <th>Dealer</th>
-            <th>Retail</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="inventory-table">
-          <tr>
-            <td colspan="9">
-              <div class="empty-state">
-                <div class="empty-icon">[  ]</div>
-                <div>Loading inventory...</div>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </main>
-</div>
+  </div>
 </div><!-- end view-inventory -->
 
 <!-- SUPPLIERS VIEW -->
 <div id="view-suppliers" class="view">
-  <div class="suppliers-page">
-    <div class="page-header">
-      <div class="page-title">Suppliers</div>
+  <div class="page-view">
+    <div class="page-view-header">
+      <div>
+        <button class="back-btn" onclick="switchView('dashboard')">← Dashboard</button>
+        <div class="page-view-title">Suppliers</div>
+        <div class="page-view-subtitle">Manage your product suppliers</div>
+      </div>
+      <button class="btn btn-primary" onclick="document.getElementById('add-supplier-modal').classList.add('active')">+ New Supplier</button>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Name</th>
-            <th>Contact Person</th>
-            <th>Phone</th>
-            <th>Email</th>
-            <th>Address</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="suppliers-table">
-          <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading suppliers...</div></div></td></tr>
-        </tbody>
-      </table>
+    <div class="page-view-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Contact Person</th>
+              <th>Phone</th>
+              <th>Email</th>
+              <th>Address</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="suppliers-table">
+            <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading suppliers...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div><!-- end view-suppliers -->
 
 <!-- SETTINGS VIEW -->
 <div id="view-settings" class="view">
-  <div class="settings-page">
-    <div class="settings-heading">Settings</div>
-    <div class="settings-grid">
+  <div class="page-view">
+    <div class="page-view-header">
       <div>
-        <div class="settings-section-header">
+        <button class="back-btn" onclick="switchView('dashboard')">← Dashboard</button>
+        <div class="page-view-title">Settings</div>
+        <div class="page-view-subtitle">Manage categories and units</div>
+      </div>
+    </div>
+    <div class="settings-grid" style="padding: 0 2rem 2rem;">
+      <div class="page-view-card">
+        <div class="settings-section-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);">
           <div class="settings-section-title">Categories</div>
           <button class="btn btn-primary" onclick="document.getElementById('add-category-modal').classList.add('active')">+ Add</button>
         </div>
@@ -1365,8 +1365,8 @@
           </table>
         </div>
       </div>
-      <div>
-        <div class="settings-section-header">
+      <div class="page-view-card">
+        <div class="settings-section-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);">
           <div class="settings-section-title">Units</div>
           <button class="btn btn-primary" onclick="document.getElementById('add-unit-modal').classList.add('active')">+ Add</button>
         </div>
@@ -1385,73 +1385,84 @@
 
 <!-- CUSTOMERS VIEW -->
 <div id="view-customers" class="view">
-  <div class="suppliers-page">
-    <div class="page-header"><div class="page-title">Customers</div></div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th><th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th>Address</th><th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="customers-table">
-          <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading customers...</div></div></td></tr>
-        </tbody>
-      </table>
+  <div class="page-view">
+    <div class="page-view-header">
+      <div>
+        <button class="back-btn" onclick="switchView('dashboard')">← Dashboard</button>
+        <div class="page-view-title">Customers</div>
+        <div class="page-view-subtitle">Manage your customer list</div>
+      </div>
+      <button class="btn btn-primary" onclick="document.getElementById('add-customer-modal').classList.add('active')">+ New Customer</button>
+    </div>
+    <div class="page-view-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th>Address</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="customers-table">
+            <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading customers...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div><!-- end view-customers -->
 
 <!-- BILLING VIEW -->
 <div id="view-billing" class="view">
-  <div class="suppliers-page">
-    <div class="page-header">
-      <div class="page-title">Billing</div>
+  <div class="page-view">
+    <div class="page-view-header">
+      <div>
+        <button class="back-btn" onclick="switchView('dashboard')">← Dashboard</button>
+        <div class="page-view-title">Sales Bills</div>
+        <div class="page-view-subtitle">Create and manage customer bills</div>
+      </div>
+      <button class="btn btn-primary" onclick="openCreateBill()">+ New Bill</button>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Invoice</th>
-            <th>Customer</th>
-            <th>Phone</th>
-            <th>Items</th>
-            <th>Total</th>
-            <th>Status</th>
-            <th>Date</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="bills-table">
-          <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading bills...</div></div></td></tr>
-        </tbody>
-      </table>
+    <div class="page-view-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th><th>Invoice No</th><th>Customer</th><th>Type</th><th>Date</th><th>Amount</th><th>Status</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="bills-table">
+            <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading bills...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div><!-- end view-billing -->
 
 <!-- PURCHASES VIEW -->
 <div id="view-purchases" class="view">
-  <div class="suppliers-page">
-    <div class="page-header"><div class="page-title">Purchase Bills</div></div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Purchase #</th>
-            <th>Supplier</th>
-            <th>Supplier Invoice</th>
-            <th>Items</th>
-            <th>Total</th>
-            <th>Status</th>
-            <th>Date</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="purchases-table">
-          <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading purchases...</div></div></td></tr>
-        </tbody>
-      </table>
+  <div class="page-view">
+    <div class="page-view-header">
+      <div>
+        <button class="back-btn" onclick="switchView('dashboard')">← Dashboard</button>
+        <div class="page-view-title">Purchases</div>
+        <div class="page-view-subtitle">Record goods received from suppliers</div>
+      </div>
+      <button class="btn btn-primary" onclick="openCreatePurchase()">+ New Purchase</button>
+    </div>
+    <div class="page-view-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Purchase #</th><th>Supplier</th><th>Supplier Invoice</th><th>Items</th><th>Total</th><th>Status</th><th>Date</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="purchases-table">
+            <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading purchases...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </div><!-- end view-purchases -->
@@ -1937,6 +1948,86 @@
   </div>
 </div>
 
+<!-- ADD ITEM MODAL -->
+<div class="modal-overlay" id="add-item-modal">
+  <div class="modal" style="width:560px; max-height:90vh; overflow-y:auto;">
+    <div class="modal-header">
+      <div class="modal-title" id="add-item-modal-title">Add New Item</div>
+      <button class="modal-close" onclick="closeModal('add-item-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Product Name *</label>
+        <input type="text" id="f-name" placeholder="e.g. USB-C Cable">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="f-category"><option value="">— select —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <select id="f-unit"><option value="">— select —</option></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Supplier</label>
+        <input type="text" id="f-supplier" placeholder="Supplier name" list="suppliers-datalist">
+      </div>
+      <div class="form-group">
+        <label>Opening Quantity</label>
+        <input type="number" id="f-quantity" placeholder="0" min="0">
+      </div>
+      <hr class="divider">
+      <div class="sidebar-title">Pricing</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Cost Price</label>
+          <input type="number" id="f-cost" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Wholesale Price</label>
+          <input type="number" id="f-wholesale" placeholder="0.00" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Dealer Price</label>
+          <input type="number" id="f-dealer" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Retail Price</label>
+          <input type="number" id="f-selling" placeholder="0.00" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>HSN Code</label>
+          <input type="text" id="f-hsn" placeholder="e.g. 4420">
+        </div>
+        <div class="form-group">
+          <label>GST Rate (%)</label>
+          <select id="f-gst">
+            <option value="0">0%</option>
+            <option value="5">5%</option>
+            <option value="12" selected>12%</option>
+            <option value="18">18%</option>
+            <option value="28">28%</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Low Stock Alert (qty)</label>
+        <input type="number" id="f-threshold" placeholder="10" min="0">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-item-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addItem()">Add to Inventory</button>
+    </div>
+  </div>
+</div>
+
 <!-- GSTIN SETTINGS MODAL -->
 <div class="modal-overlay" id="gstin-modal">
   <div class="modal" style="width:420px;">
@@ -2130,6 +2221,7 @@
         return;
       }
       clearForm();
+      closeModal('add-item-modal');
       await loadInventory();
       showToast('Item added successfully');
     } catch (e) {
@@ -2145,8 +2237,7 @@
 
   // ── Edit Modal ──────────────────────────────────────────
   function openAddModal() {
-    document.querySelector('.sidebar') && document.querySelector('.sidebar').scrollIntoView({ behavior: 'smooth' });
-    document.getElementById('f-name').focus();
+    document.getElementById('add-item-modal').classList.add('active');
   }
 
   function openEditModal(id) {
@@ -2295,13 +2386,6 @@
       const tab = document.getElementById('tab-' + v);
       if (tab) tab.classList.toggle('active', v === view);
     });
-    const btnNew = document.getElementById('btn-new');
-    if (newLabels[view]) {
-      btnNew.textContent = newLabels[view];
-      btnNew.style.display = '';
-    } else {
-      btnNew.style.display = 'none';
-    }
     if (loaders[view]) loaders[view]();
   }
 
