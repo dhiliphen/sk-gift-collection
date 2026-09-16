@@ -1,0 +1,3355 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="sandal">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SK Gift Collection</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  /* ── THEMES ───────────────────────────────────────────── */
+  html[data-theme="white"] {
+    --bg: #f5f6f7;
+    --surface: #ffffff;
+    --surface2: #f0f2f3;
+    --border: #dde1e4;
+    --accent: #00966b;
+    --accent-dim: rgba(0,150,107,0.1);
+    --warn: #e04f1a;
+    --warn-dim: rgba(224,79,26,0.1);
+    --text: #1a1d1e;
+    --text-muted: #7a8589;
+  }
+
+  html[data-theme="sandal"] {
+    --bg: #f5ede8;
+    --surface: #fff8f5;
+    --surface2: #ede3dc;
+    --border: #d4bfb5;
+    --accent: #c4516a;
+    --accent-dim: rgba(196,81,106,0.12);
+    --warn: #c45c1a;
+    --warn-dim: rgba(196,92,26,0.12);
+    --text: #2d1f1a;
+    --text-muted: #9a7b72;
+  }
+
+  html[data-theme="dark"] {
+    --bg: #0d0f0f;
+    --surface: #141718;
+    --surface2: #1c1f20;
+    --border: #2a2d2e;
+    --accent: #00e5a0;
+    --accent-dim: rgba(0,229,160,0.12);
+    --warn: #ff6b35;
+    --warn-dim: rgba(255,107,53,0.12);
+    --text: #e8eaeb;
+    --text-muted: #6b7071;
+  }
+
+  /* ── FONT SIZE ────────────────────────────────────────── */
+  html { font-size: 14px; }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── SCROLLBARS (thin, themed — visible on Windows) ─── */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  *::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 64px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--accent);
+  }
+
+  .logo span { color: var(--text-muted); }
+
+  .header-actions { display: flex; gap: 0.75rem; align-items: center; }
+
+  .font-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 0 0.25rem;
+    height: 32px;
+  }
+
+  .icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-family: var(--mono);
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    transition: color 0.2s, background 0.2s;
+    line-height: 1;
+  }
+
+  .icon-btn:hover { color: var(--accent); background: var(--accent-dim); }
+
+  .font-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    width: 30px;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+
+  .theme-controls {
+    display: flex;
+    gap: 0;
+    align-items: center;
+  }
+
+  .theme-btn {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    width: 28px;
+    height: 32px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: -1px;
+  }
+
+  .theme-btn:first-child { border-radius: 2px 0 0 2px; }
+  .theme-btn:last-child  { border-radius: 0 2px 2px 0; }
+
+  .theme-btn.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+    z-index: 1;
+  }
+
+  /* NAV TABS */
+  .nav-tabs {
+    display: flex;
+    gap: 0;
+    align-items: center;
+  }
+
+  .nav-tab {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0.5rem 1.25rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-left: -1px;
+    white-space: nowrap;
+  }
+
+  .nav-tab:first-child { border-radius: 2px 0 0 2px; }
+  .nav-tab:last-child  { border-radius: 0 2px 2px 0; }
+
+  .nav-tab.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+    z-index: 1;
+  }
+
+  /* NAV DROPDOWN GROUP */
+  .nav-group {
+    position: relative;
+    display: inline-flex;
+    margin-left: -1px;
+  }
+
+  .nav-group-btn {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0.5rem 1.25rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .nav-group-btn:hover, .nav-group-btn.active {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--accent);
+    z-index: 1;
+  }
+
+  .nav-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 1px);
+    left: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 0 0 4px 4px;
+    z-index: 300;
+    min-width: 160px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+
+  .nav-group.open .nav-dropdown { display: block; }
+
+  .nav-dropdown button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 0.7rem 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .nav-dropdown button:last-child { border-bottom: none; }
+
+  .nav-dropdown button:hover, .nav-dropdown button.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+  }
+
+  /* STATS BAR */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat-card {
+    padding: 1.25rem 2rem;
+    border-right: 1px solid var(--border);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card:last-child { border-right: none; }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transition: transform 0.4s ease;
+  }
+
+  .stat-card:hover::before { transform: scaleX(1); }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .stat-value.warn { color: var(--warn); }
+  .stat-value.accent { color: var(--accent); }
+
+  /* LAYOUT */
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: calc(100vh - 197px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 1.5rem;
+    overflow-y: auto;
+    background: var(--surface);
+  }
+
+  .sidebar-title {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  /* FORM */
+  .form-group { margin-bottom: 1rem; }
+
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  input, select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.6rem 0.75rem;
+    font-family: var(--sans);
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.2s;
+    border-radius: 2px;
+  }
+
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239a9a9a' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.65rem center;
+    cursor: pointer;
+  }
+
+  input:focus, select:focus { border-color: var(--accent); }
+  input::placeholder { color: var(--text-muted); }
+
+  select option { background: var(--surface); color: var(--text); }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.25rem 0;
+  }
+
+  /* BUTTONS */
+  .btn {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 0.65rem 1.25rem;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #000;
+    width: 100%;
+  }
+
+  .btn-primary:hover { background: #00ffb3; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost:hover { border-color: var(--text-muted); color: var(--text); }
+
+  .btn-warn {
+    background: var(--warn-dim);
+    color: var(--warn);
+    border: 1px solid var(--warn);
+    font-size: 0.65rem;
+    padding: 0.4rem 0.75rem;
+  }
+
+  .btn-warn:hover { background: var(--warn); color: #fff; }
+
+  .btn-edit {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    font-size: 0.65rem;
+    padding: 0.4rem 0.75rem;
+  }
+
+  .btn-edit:hover { background: var(--accent); color: #000; }
+
+  .btn-stock {
+    background: var(--surface2);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    font-size: 0.65rem;
+    padding: 0.4rem 0.75rem;
+  }
+
+  .btn-stock:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* MAIN TABLE AREA */
+  .main { overflow-y: auto; padding: 1.5rem 2rem; }
+
+  .toolbar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .search-box {
+    flex: 1;
+    min-width: 200px;
+    position: relative;
+  }
+
+  .search-box input {
+    padding-left: 2.25rem;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    font-family: var(--mono);
+  }
+
+  .filter-group { display: flex; gap: 0.5rem; }
+
+  .filter-btn {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0.5rem 1rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .filter-btn.active, .filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-dim);
+  }
+
+  /* TABLE */
+  .table-wrap {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  thead {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.85rem 1rem;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.15s;
+  }
+
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface); }
+
+  td {
+    padding: 0.85rem 1rem;
+    font-size: 0.875rem;
+    vertical-align: middle;
+  }
+
+  .item-name {
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .item-category {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 2px;
+    margin-top: 0.2rem;
+  }
+
+  .qty-badge {
+    font-family: var(--mono);
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+
+  .qty-badge.low { color: var(--warn); }
+  .qty-badge.ok { color: var(--accent); }
+
+  .low-stock-flag {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 1px;
+    color: var(--warn);
+    text-transform: uppercase;
+  }
+
+  .price-cell { font-family: var(--mono); font-size: 0.8rem; }
+
+  .actions { display: flex; gap: 0.4rem; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text-muted);
+  }
+
+  .empty-icon {
+    font-family: var(--mono);
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    width: 480px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 4px;
+    animation: slideUp 0.25s ease;
+  }
+
+  @keyframes slideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .modal-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modal-title {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1.2rem;
+    font-family: var(--mono);
+    line-height: 1;
+  }
+
+  .modal-close:hover { color: var(--text); }
+
+  .modal-body { padding: 1.5rem; }
+  .modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+  }
+
+  .modal-footer .btn { width: auto; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 1rem 1.5rem;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    z-index: 300;
+    transform: translateX(120%);
+    transition: transform 0.3s ease;
+    border-radius: 2px;
+  }
+
+  .toast.show { transform: translateX(0); }
+  .toast.error { border-left-color: var(--warn); }
+
+  /* STOCK MODAL */
+  .stock-controls {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    justify-content: center;
+    margin: 1.5rem 0;
+  }
+
+  .stock-btn {
+    width: 40px; height: 40px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 1.2rem;
+    cursor: pointer;
+    border-radius: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    transition: all 0.2s;
+  }
+
+  .stock-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .stock-value {
+    font-family: var(--mono);
+    font-size: 2rem;
+    font-weight: 700;
+    min-width: 80px;
+    text-align: center;
+  }
+
+  .stock-direction {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+
+  .dir-btn {
+    flex: 1;
+    padding: 0.6rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    border-radius: 2px;
+  }
+
+  .dir-btn.add.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .dir-btn.remove.active { border-color: var(--warn); color: var(--warn); background: var(--warn-dim); }
+
+  /* SUPPLIER VIEW */
+  .view { display: none; }
+  .view.active { display: contents; }
+
+  .suppliers-page {
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    height: calc(100vh - 197px);
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .page-title {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* BILLING */
+  .status-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 2px;
+  }
+  .status-badge.paid { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
+  .status-badge.cancelled { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
+
+  .bill-line-item {
+    display: grid;
+    grid-template-columns: 1fr 80px 100px 80px 28px;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .bill-line-item select,
+  .bill-line-item input {
+    margin: 0;
+    padding: 0.45rem 0.5rem;
+    font-size: 0.8rem;
+  }
+
+  .bill-line-item select {
+    padding-right: 1.6rem;
+    background-position: right 0.4rem center;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .line-total-display {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+    text-align: right;
+  }
+
+  .remove-line-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    font-family: var(--mono);
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .remove-line-btn:hover { color: var(--warn); }
+
+  .bill-total-row {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .bill-grand-total {
+    font-family: var(--mono);
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .line-header {
+    display: grid;
+    grid-template-columns: 1fr 80px 100px 80px 28px;
+    gap: 0.5rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .line-header span {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* BILL DETAIL MODAL */
+  .bill-detail-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+  .bill-detail-table th {
+    font-family: var(--mono);
+    font-size: 0.62rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.6rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .bill-detail-table td {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .bill-detail-table tr:last-child td { border-bottom: none; }
+
+  /* CUSTOMER TYPE BADGES */
+  .ctype-badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 0.2rem 0.6rem;
+    border-radius: 2px;
+    border: 1px solid;
+  }
+  .ctype-badge.wholesaler { background: rgba(59,130,246,0.1); color: #3b82f6; border-color: #3b82f6; }
+  .ctype-badge.dealer     { background: rgba(139,92,246,0.1); color: #8b5cf6; border-color: #8b5cf6; }
+  .ctype-badge.retailer   { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+  /* BILLING CUSTOMER TYPE RADIO */
+  .ctype-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+  }
+  .ctype-radio {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    transition: all 0.2s;
+    background: var(--surface2);
+  }
+  .ctype-radio input { display: none; }
+  .ctype-radio.selected-wholesaler { border-color: #3b82f6; color: #3b82f6; background: rgba(59,130,246,0.1); }
+  .ctype-radio.selected-dealer     { border-color: #8b5cf6; color: #8b5cf6; background: rgba(139,92,246,0.1); }
+  .ctype-radio.selected-retailer   { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  /* FLOW DIAGRAM */
+  .flow-diagram {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 1.25rem 2rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .flow-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.6rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 110px;
+  }
+  .flow-step:hover { border-color: var(--accent); background: var(--accent-dim); }
+  .flow-step.active-step { border-color: var(--accent); background: var(--accent-dim); }
+  .flow-step-icon { font-family: var(--mono); font-size: 1.1rem; }
+  .flow-step-label {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .flow-step.active-step .flow-step-label { color: var(--accent); }
+  .flow-arrow {
+    font-family: var(--mono);
+    font-size: 1rem;
+    color: var(--text-muted);
+    padding: 0 0.5rem;
+  }
+  .status-badge.received { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
+
+  /* ── RESPONSIVE ─────────────────────────────────────────── */
+
+  /* Tablet landscape (≤ 1024px) */
+  @media (max-width: 1024px) {
+    .layout { grid-template-columns: 240px 1fr; }
+    .stat-card { padding: 1rem 1.5rem; }
+    .flow-step { min-width: 90px; padding: 0.5rem 0.75rem; }
+    .main { padding: 1.25rem 1.5rem; }
+  }
+
+  /* Tablet / mobile (≤ 768px) */
+  @media (max-width: 768px) {
+    header {
+      padding: 0.5rem 1rem;
+      height: auto;
+      min-height: 56px;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .nav-tabs {
+      order: 3;
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 0.25rem;
+      scrollbar-width: none;
+    }
+    .nav-tabs::-webkit-scrollbar { display: none; }
+    .header-actions { gap: 0.4rem; }
+    .font-controls { display: none; }
+
+    .flow-diagram { padding: 0.75rem 1rem; }
+    .flow-step { min-width: 80px; padding: 0.4rem 0.6rem; }
+    .flow-step-icon { font-size: 0.9rem; }
+    .flow-arrow { padding: 0 0.2rem; font-size: 0.8rem; }
+
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .stat-card { padding: 0.85rem 1rem; }
+    .stat-value { font-size: 1.3rem; }
+
+    .layout { grid-template-columns: 1fr; height: auto; min-height: calc(100vh - 220px); }
+    .sidebar { display: none; }
+
+    .main { padding: 1rem; }
+    .suppliers-page { padding: 1rem; height: auto; min-height: calc(100vh - 220px); }
+
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    .form-row { grid-template-columns: 1fr; }
+
+    .page-header { flex-wrap: wrap; gap: 0.75rem; }
+
+    .modal-overlay { align-items: flex-end; }
+    .modal {
+      width: 100%;
+      max-width: 100%;
+      max-height: 92vh;
+      border-radius: 4px 4px 0 0;
+      margin: 0;
+    }
+
+    .toast { bottom: 1rem; right: 1rem; left: 1rem; transform: translateY(120%); }
+    .toast.show { transform: translateY(0); }
+  }
+
+  /* Small phones (≤ 480px) */
+  @media (max-width: 480px) {
+    .logo { font-size: 0.9rem; letter-spacing: 2px; }
+    .theme-controls { display: none; }
+    #btn-new { padding: 0.5rem 0.6rem; font-size: 0.65rem; letter-spacing: 0.5px; }
+
+    .stats-bar { grid-template-columns: 1fr 1fr; }
+    .stat-value { font-size: 1.1rem; }
+    .stat-card { padding: 0.75rem; }
+
+    .flow-diagram {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      justify-content: flex-start;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding: 0.6rem 0.75rem;
+    }
+    .flow-diagram::-webkit-scrollbar { display: none; }
+    .flow-step { flex-shrink: 0; min-width: 70px; }
+    .flow-arrow { flex-shrink: 0; }
+
+    .toolbar { gap: 0.5rem; }
+    .filter-group { flex-wrap: wrap; gap: 0.4rem; }
+
+    .bill-line-item { grid-template-columns: 1fr 60px 85px 65px 24px; gap: 0.35rem; }
+    .line-header { grid-template-columns: 1fr 60px 85px 65px 24px; gap: 0.35rem; }
+
+    .bill-total-row { flex-direction: column; align-items: flex-end; gap: 0.5rem; }
+
+    .modal-body { padding: 1rem; }
+    .modal-footer { padding: 0.75rem 1rem; }
+    .modal-header { padding: 1rem; }
+
+    .ctype-row { flex-wrap: wrap; }
+    .ctype-radio { min-width: calc(50% - 0.25rem); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">SK GIFT<span> COLLECTION</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-inventory" onclick="switchView('inventory')">Inventory</button>
+
+    <div class="nav-group" id="group-masters">
+      <button class="nav-group-btn" id="group-btn-masters" onclick="toggleNavGroup('masters')">Masters ▾</button>
+      <div class="nav-dropdown" id="dropdown-masters">
+        <button id="tab-suppliers"  onclick="switchView('suppliers');  closeNavGroups()">Suppliers</button>
+        <button id="tab-categories" onclick="switchView('categories'); closeNavGroups()">Categories</button>
+        <button id="tab-units"      onclick="switchView('units');      closeNavGroups()">Units</button>
+        <button id="tab-customers"  onclick="switchView('customers');  closeNavGroups()">Customers</button>
+      </div>
+    </div>
+
+    <div class="nav-group" id="group-transactions">
+      <button class="nav-group-btn" id="group-btn-transactions" onclick="toggleNavGroup('transactions')">Transactions ▾</button>
+      <div class="nav-dropdown" id="dropdown-transactions">
+        <button id="tab-purchases" onclick="switchView('purchases'); closeNavGroups()">Purchases</button>
+        <button id="tab-billing"   onclick="switchView('billing');   closeNavGroups()">Billing</button>
+      </div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <div class="font-controls">
+      <button class="icon-btn" onclick="adjustFont(-1)" title="Decrease font size">−</button>
+      <span class="font-label" id="font-label">14px</span>
+      <button class="icon-btn" onclick="adjustFont(1)" title="Increase font size">+</button>
+    </div>
+    <div class="theme-controls">
+      <button class="theme-btn" id="theme-dark"   onclick="setTheme('dark')"   title="Dark">D</button>
+      <button class="theme-btn" id="theme-white"  onclick="setTheme('white')"  title="White">W</button>
+      <button class="theme-btn active" id="theme-sandal" onclick="setTheme('sandal')" title="Sandal">S</button>
+    </div>
+    <button class="btn btn-ghost" onclick="openSettings()" title="Business Settings" style="letter-spacing:1px;">⚙ SETTINGS</button>
+    <button class="btn btn-ghost" id="btn-new" onclick="handleNew()">+ NEW ITEM</button>
+    <form method="post" action="/logout" style="margin:0;">
+      <button type="submit" class="btn btn-ghost" style="letter-spacing:1px;" title="Sign out">⏻ LOGOUT</button>
+    </form>
+  </div>
+</header>
+
+<!-- FLOW DIAGRAM -->
+<div class="flow-diagram">
+  <div class="flow-step" id="flow-suppliers" onclick="switchView('suppliers')" title="Manage your suppliers">
+    <span class="flow-step-icon">🏭</span>
+    <span class="flow-step-label">Supplier</span>
+  </div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step" id="flow-purchases" onclick="switchView('purchases')" title="Record goods received">
+    <span class="flow-step-icon">📥</span>
+    <span class="flow-step-label">Purchase Bill</span>
+  </div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step active-step" id="flow-inventory" onclick="switchView('inventory')" title="View stock levels">
+    <span class="flow-step-icon">📦</span>
+    <span class="flow-step-label">Inventory</span>
+  </div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step" id="flow-billing" onclick="switchView('billing')" title="Create selling bills">
+    <span class="flow-step-icon">🧾</span>
+    <span class="flow-step-label">Sales Bill</span>
+  </div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step" id="flow-customers" onclick="switchView('customers')" title="Manage customers">
+    <span class="flow-step-icon">👤</span>
+    <span class="flow-step-label">Customer</span>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-card">
+    <div class="stat-label">Total Items</div>
+    <div class="stat-value accent" id="stat-total">—</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Portfolio Value</div>
+    <div class="stat-value" id="stat-value">—</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Low Stock</div>
+    <div class="stat-value warn" id="stat-low">—</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">Categories</div>
+    <div class="stat-value" id="stat-cats">—</div>
+  </div>
+</div>
+
+<div id="view-inventory" class="view active">
+<div class="layout">
+  <!-- SIDEBAR: Add Item Form -->
+  <aside class="sidebar">
+    <div class="sidebar-title">Add New Item</div>
+
+    <div class="form-group">
+      <label>Product Name *</label>
+      <input type="text" id="f-name" placeholder="e.g. USB-C Cable">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <select id="f-category"><option value="">— select —</option></select>
+      </div>
+      <div class="form-group">
+        <label>Unit</label>
+        <select id="f-unit"><option value="">— select —</option></select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Supplier</label>
+      <input type="text" id="f-supplier" placeholder="Supplier name" list="suppliers-datalist">
+    </div>
+
+    <div class="form-group">
+      <label>Opening Quantity</label>
+      <input type="number" id="f-quantity" placeholder="0" min="0">
+    </div>
+
+    <hr class="divider">
+    <div class="sidebar-title">Pricing</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Cost Price</label>
+        <input type="number" id="f-cost" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Wholesale Price</label>
+        <input type="number" id="f-wholesale" placeholder="0.00" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Dealer Price</label>
+        <input type="number" id="f-dealer" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Retail Price</label>
+        <input type="number" id="f-selling" placeholder="0.00" min="0" step="0.01">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>HSN Code</label>
+        <input type="text" id="f-hsn" placeholder="e.g. 4420">
+      </div>
+      <div class="form-group">
+        <label>GST Rate (%)</label>
+        <select id="f-gst">
+          <option value="0">0%</option>
+          <option value="5">5%</option>
+          <option value="12" selected>12%</option>
+          <option value="18">18%</option>
+          <option value="28">28%</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Low Stock Alert (qty)</label>
+      <input type="number" id="f-threshold" placeholder="10" min="0">
+    </div>
+
+    <button class="btn btn-primary" onclick="addItem()">ADD TO INVENTORY</button>
+  </aside>
+
+  <!-- MAIN: Inventory Table -->
+  <main class="main">
+    <div class="toolbar">
+      <div class="search-box">
+        <span class="search-icon">/</span>
+        <input type="text" id="search" placeholder="Search items..." oninput="filterItems()">
+      </div>
+      <div class="filter-group" id="filter-group">
+        <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
+        <button class="filter-btn" onclick="setFilter('low', this)">⚠ Low Stock</button>
+      </div>
+      <button class="btn btn-ghost" onclick="exportInventoryExcel()" style="white-space:nowrap;">↓ EXPORT EXCEL</button>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Product</th>
+            <th>Supplier</th>
+            <th>Quantity</th>
+            <th>Cost</th>
+            <th>Wholesale</th>
+            <th>Dealer</th>
+            <th>Retail</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="inventory-table">
+          <tr>
+            <td colspan="9">
+              <div class="empty-state">
+                <div class="empty-icon">[  ]</div>
+                <div>Loading inventory...</div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+</div><!-- end view-inventory -->
+
+<!-- SUPPLIERS VIEW -->
+<div id="view-suppliers" class="view">
+  <div class="suppliers-page">
+    <div class="page-header">
+      <div class="page-title">Suppliers</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Contact Person</th>
+            <th>Phone</th>
+            <th>Email</th>
+            <th>Address</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="suppliers-table">
+          <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading suppliers...</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- end view-suppliers -->
+
+<!-- CATEGORIES VIEW -->
+<div id="view-categories" class="view">
+  <div class="suppliers-page">
+    <div class="page-header">
+      <div class="page-title">Categories</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="categories-table">
+          <tr><td colspan="3"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading categories...</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- end view-categories -->
+
+<!-- UNITS VIEW -->
+<div id="view-units" class="view">
+  <div class="suppliers-page">
+    <div class="page-header">
+      <div class="page-title">Units</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="units-table">
+          <tr><td colspan="3"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading units...</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- end view-units -->
+
+<!-- CUSTOMERS VIEW -->
+<div id="view-customers" class="view">
+  <div class="suppliers-page">
+    <div class="page-header"><div class="page-title">Customers</div></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th><th>Name</th><th>Type</th><th>Phone</th><th>Email</th><th>Address</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="customers-table">
+          <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading customers...</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- end view-customers -->
+
+<!-- BILLING VIEW -->
+<div id="view-billing" class="view">
+  <div class="suppliers-page">
+    <div class="page-header">
+      <div class="page-title">Billing</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Invoice</th>
+            <th>Customer</th>
+            <th>Phone</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="bills-table">
+          <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading bills...</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- end view-billing -->
+
+<!-- PURCHASES VIEW -->
+<div id="view-purchases" class="view">
+  <div class="suppliers-page">
+    <div class="page-header"><div class="page-title">Purchase Bills</div></div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Purchase #</th>
+            <th>Supplier</th>
+            <th>Supplier Invoice</th>
+            <th>Items</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="purchases-table">
+          <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading purchases...</div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div><!-- end view-purchases -->
+
+<!-- CREATE PURCHASE MODAL -->
+<div class="modal-overlay" id="create-purchase-modal">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header">
+      <div class="modal-title">Record Purchase Bill</div>
+      <button class="modal-close" onclick="closeModal('create-purchase-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Supplier Name *</label>
+          <input type="text" id="pur-supplier" placeholder="e.g. Rajan Traders" list="suppliers-datalist">
+        </div>
+        <div class="form-group">
+          <label>Supplier Invoice Ref</label>
+          <input type="text" id="pur-invoice-ref" placeholder="e.g. INV-2345 (optional)">
+        </div>
+      </div>
+      <hr class="divider">
+      <div class="sidebar-title" style="margin-bottom:0.75rem;">Items Received</div>
+      <div class="line-header">
+        <span>Item</span><span>Qty</span><span>Unit Cost</span><span>Total</span><span></span>
+      </div>
+      <div id="purchase-lines"></div>
+      <button class="btn btn-ghost" style="width:100%; margin-top:0.5rem;" onclick="addPurchaseLine()">+ ADD ITEM</button>
+      <div class="bill-total-row">
+        <span style="font-family:var(--mono); font-size:0.7rem; color:var(--text-muted); letter-spacing:1px;">GRAND TOTAL</span>
+        <span class="bill-grand-total" id="pur-grand-total">₹0.00</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('create-purchase-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPurchase()">RECORD PURCHASE</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW PURCHASE MODAL -->
+<div class="modal-overlay" id="view-purchase-modal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title" id="view-pur-title">Purchase Bill</div>
+      <button class="modal-close" onclick="closeModal('view-purchase-modal')">×</button>
+    </div>
+    <div class="modal-body" id="view-pur-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('view-purchase-modal')">Close</button>
+      <button class="btn btn-warn" id="cancel-pur-btn" onclick="cancelCurrentPurchase()">CANCEL PURCHASE</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Item</div>
+      <button class="modal-close" onclick="closeModal('edit-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-id">
+      <div class="form-group">
+        <label>Product Name</label>
+        <input type="text" id="edit-name">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Category</label>
+          <select id="edit-category"><option value="">— select —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Unit</label>
+          <select id="edit-unit"><option value="">— select —</option></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Supplier</label>
+        <input type="text" id="edit-supplier" list="suppliers-datalist">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Cost Price</label>
+          <input type="number" id="edit-cost" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Wholesale Price</label>
+          <input type="number" id="edit-wholesale" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Dealer Price</label>
+          <input type="number" id="edit-dealer" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Retail Price</label>
+          <input type="number" id="edit-selling" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>HSN Code</label>
+          <input type="text" id="edit-hsn" placeholder="e.g. 4420">
+        </div>
+        <div class="form-group">
+          <label>GST Rate (%)</label>
+          <select id="edit-gst">
+            <option value="0">0%</option>
+            <option value="5">5%</option>
+            <option value="12">12%</option>
+            <option value="18">18%</option>
+            <option value="28">28%</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" id="edit-quantity" min="0">
+        </div>
+        <div class="form-group">
+          <label>Low Stock Alert</label>
+          <input type="number" id="edit-threshold" min="0">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()">SAVE CHANGES</button>
+    </div>
+  </div>
+</div>
+
+<!-- STOCK MODAL -->
+<div class="modal-overlay" id="stock-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Update Stock</div>
+      <button class="modal-close" onclick="closeModal('stock-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="stock-id">
+      <p style="text-align:center; color: var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">
+        Updating: <strong id="stock-item-name" style="color:var(--text)"></strong>
+        &nbsp;|&nbsp; Current: <strong id="stock-current" style="color:var(--accent); font-family:var(--mono)"></strong>
+      </p>
+      <div class="stock-direction">
+        <button class="dir-btn add active" id="dir-add" onclick="setDirection('add')">+ Add Stock</button>
+        <button class="dir-btn remove" id="dir-remove" onclick="setDirection('remove')">− Remove Stock</button>
+      </div>
+      <div class="stock-controls">
+        <button class="stock-btn" onclick="adjustStockVal(-10)">−10</button>
+        <button class="stock-btn" onclick="adjustStockVal(-1)">−</button>
+        <div class="stock-value" id="stock-qty-display">0</div>
+        <button class="stock-btn" onclick="adjustStockVal(1)">+</button>
+        <button class="stock-btn" onclick="adjustStockVal(10)">+10</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('stock-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveStock()">UPDATE STOCK</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD SUPPLIER MODAL -->
+<div class="modal-overlay" id="add-supplier-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Supplier</div>
+      <button class="modal-close" onclick="closeModal('add-supplier-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Supplier Name *</label>
+        <input type="text" id="sf-name" placeholder="e.g. Acme Corp">
+      </div>
+      <div class="form-group">
+        <label>Contact Person</label>
+        <input type="text" id="sf-contact" placeholder="e.g. John Doe">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="sf-phone" placeholder="+91 98765 43210">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="sf-email" placeholder="contact@supplier.com">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Address</label>
+        <input type="text" id="sf-address" placeholder="Street, City, State">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-supplier-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addSupplier()">ADD SUPPLIER</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT SUPPLIER MODAL -->
+<div class="modal-overlay" id="edit-supplier-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Supplier</div>
+      <button class="modal-close" onclick="closeModal('edit-supplier-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-supplier-id">
+      <div class="form-group">
+        <label>Supplier Name</label>
+        <input type="text" id="edit-sf-name">
+      </div>
+      <div class="form-group">
+        <label>Contact Person</label>
+        <input type="text" id="edit-sf-contact">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="edit-sf-phone">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="edit-sf-email">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Address</label>
+        <input type="text" id="edit-sf-address">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit-supplier-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSupplier()">SAVE CHANGES</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREATE BILL MODAL -->
+<div class="modal-overlay" id="create-bill-modal">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header">
+      <div class="modal-title">New Bill</div>
+      <button class="modal-close" onclick="closeModal('create-bill-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Customer Name *</label>
+          <input type="text" id="bill-customer-name" placeholder="e.g. Ravi Kumar" list="customers-datalist">
+        </div>
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="bill-customer-phone" placeholder="+91 98765 43210">
+        </div>
+      </div>
+      <div class="ctype-row">
+        <label class="ctype-radio" id="ctype-wholesaler" onclick="setBillingType('wholesaler')">
+          <input type="radio" name="bill-ctype" value="wholesaler">Wholesaler
+        </label>
+        <label class="ctype-radio" id="ctype-dealer" onclick="setBillingType('dealer')">
+          <input type="radio" name="bill-ctype" value="dealer">Dealer
+        </label>
+        <label class="ctype-radio selected-retailer" id="ctype-retailer" onclick="setBillingType('retailer')">
+          <input type="radio" name="bill-ctype" value="retailer" checked>Retailer
+        </label>
+      </div>
+      <hr class="divider">
+      <div class="sidebar-title" style="margin-bottom:0.75rem;">Line Items</div>
+      <div class="line-header">
+        <span>Item</span><span>Qty</span><span>Unit Price</span><span>Total</span><span></span>
+      </div>
+      <div id="bill-lines"></div>
+      <button class="btn btn-ghost" style="width:100%; margin-top:0.5rem;" onclick="addBillLine()">+ ADD ITEM</button>
+      <div style="margin-top:1rem; padding-top:0.75rem; border-top:1px solid var(--border);">
+        <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.75rem; color:var(--text-muted); margin-bottom:0.35rem;">
+          <span>TAXABLE AMOUNT</span><span id="bill-taxable">₹0.00</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.75rem; color:var(--text-muted); margin-bottom:0.5rem;">
+          <span>IGST</span><span id="bill-igst">₹0.00</span>
+        </div>
+        <div class="bill-total-row" style="margin-top:0; padding-top:0.5rem;">
+          <span style="font-family:var(--mono); font-size:0.7rem; color:var(--text-muted); letter-spacing:1px;">GRAND TOTAL</span>
+          <span class="bill-grand-total" id="bill-grand-total">₹0.00</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('create-bill-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitBill()">CREATE BILL</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW BILL MODAL -->
+<div class="modal-overlay" id="view-bill-modal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title" id="view-bill-title">Invoice</div>
+      <button class="modal-close" onclick="closeModal('view-bill-modal')">×</button>
+    </div>
+    <div class="modal-body" id="view-bill-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('view-bill-modal')">Close</button>
+      <button class="btn btn-stock" onclick="printBill()">PRINT</button>
+      <button class="btn btn-warn" id="cancel-bill-btn" onclick="cancelCurrentBill()">CANCEL BILL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CUSTOMER MODAL -->
+<div class="modal-overlay" id="add-customer-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Customer</div>
+      <button class="modal-close" onclick="closeModal('add-customer-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Name *</label>
+        <input type="text" id="cust-name" placeholder="e.g. Rajan Traders">
+      </div>
+      <div class="form-group">
+        <label>Customer Type *</label>
+        <select id="cust-type">
+          <option value="wholesaler">Wholesaler</option>
+          <option value="dealer">Dealer</option>
+          <option value="retailer" selected>Retailer</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="cust-phone" placeholder="+91 98765 43210">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="cust-email" placeholder="contact@example.com">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Address</label>
+        <input type="text" id="cust-address" placeholder="Street, City">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-customer-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addCustomer()">ADD CUSTOMER</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT CUSTOMER MODAL -->
+<div class="modal-overlay" id="edit-customer-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Customer</div>
+      <button class="modal-close" onclick="closeModal('edit-customer-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-cust-id">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="edit-cust-name">
+      </div>
+      <div class="form-group">
+        <label>Customer Type</label>
+        <select id="edit-cust-type">
+          <option value="wholesaler">Wholesaler</option>
+          <option value="dealer">Dealer</option>
+          <option value="retailer">Retailer</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" id="edit-cust-phone">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="edit-cust-email">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Address</label>
+        <input type="text" id="edit-cust-address">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit-customer-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCustomer()">SAVE CHANGES</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD CATEGORY MODAL -->
+<div class="modal-overlay" id="add-category-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Category</div>
+      <button class="modal-close" onclick="closeModal('add-category-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Category Name *</label>
+        <input type="text" id="cf-name" placeholder="e.g. Electronics">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-category-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addCategory()">ADD CATEGORY</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT CATEGORY MODAL -->
+<div class="modal-overlay" id="edit-category-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Category</div>
+      <button class="modal-close" onclick="closeModal('edit-category-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-category-id">
+      <div class="form-group">
+        <label>Category Name</label>
+        <input type="text" id="edit-cf-name">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit-category-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveCategory()">SAVE CHANGES</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD UNIT MODAL -->
+<div class="modal-overlay" id="add-unit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Unit</div>
+      <button class="modal-close" onclick="closeModal('add-unit-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Unit Name *</label>
+        <input type="text" id="uf-name" placeholder="e.g. kg">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-unit-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addUnit()">ADD UNIT</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT UNIT MODAL -->
+<div class="modal-overlay" id="edit-unit-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Edit Unit</div>
+      <button class="modal-close" onclick="closeModal('edit-unit-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="edit-unit-id">
+      <div class="form-group">
+        <label>Unit Name</label>
+        <input type="text" id="edit-uf-name">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('edit-unit-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUnit()">SAVE CHANGES</button>
+    </div>
+  </div>
+</div>
+
+<!-- GSTIN SETTINGS MODAL -->
+<div class="modal-overlay" id="gstin-modal">
+  <div class="modal" style="width:420px;">
+    <div class="modal-header">
+      <div class="modal-title">Business Settings</div>
+      <button class="modal-close" onclick="closeModal('gstin-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Business Name</label>
+        <input type="text" id="settings-biz-name" placeholder="e.g. SK Gift Collection">
+      </div>
+      <div class="form-group">
+        <label>GSTIN</label>
+        <input type="text" id="settings-gstin" placeholder="e.g. 29ABCDE1234F1Z5" maxlength="15" style="text-transform:uppercase;">
+      </div>
+      <div class="form-group">
+        <label>Business Address</label>
+        <textarea id="settings-biz-address" rows="3" placeholder="Full address for invoices"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="text" id="settings-biz-phone" placeholder="Contact number">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('gstin-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- DATALISTS for autocomplete -->
+<datalist id="suppliers-datalist"></datalist>
+<datalist id="customers-datalist"></datalist>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+  let allItems = [];
+  let currentFilter = 'all';
+  let stockDirection = 'add';
+  let stockQty = 0;
+
+  // ── Fetch & Render ──────────────────────────────────────
+  async function loadInventory() {
+    try {
+      const res = await fetch('/api/items');
+      allItems = await res.json();
+      renderTable(allItems);
+      loadStats();
+    } catch (e) {
+      showToast('Failed to load inventory', 'error');
+    }
+  }
+
+  async function loadDropdowns() {
+    const [catRes, unitRes] = await Promise.all([
+      fetch('/api/categories'),
+      fetch('/api/units')
+    ]);
+    const cats = await catRes.json();
+    const units = await unitRes.json();
+
+    const catOpts = cats.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+    const unitOpts = units.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
+
+    ['f-category', 'edit-category'].forEach(id => {
+      document.getElementById(id).innerHTML = '<option value="">— select —</option>' + catOpts;
+    });
+    ['f-unit', 'edit-unit'].forEach(id => {
+      document.getElementById(id).innerHTML = '<option value="">— select —</option>' + unitOpts;
+    });
+
+    renderCategoryFilters(cats);
+  }
+
+  async function loadStats() {
+    try {
+      const res = await fetch('/api/stats');
+      const s = await res.json();
+      document.getElementById('stat-total').textContent = s.total_items;
+      document.getElementById('stat-value').textContent = '₹' + s.total_value.toLocaleString();
+      document.getElementById('stat-low').textContent = s.low_stock_count;
+      document.getElementById('stat-cats').textContent = s.categories.length;
+    } catch (e) {}
+  }
+
+  function renderTable(items) {
+    const tbody = document.getElementById('inventory-table');
+    if (!items.length) {
+      tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No items found</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = items.map(item => {
+      const isLow = item.quantity <= item.low_stock_threshold;
+      return `
+        <tr>
+          <td style="font-family:var(--mono); color:var(--text-muted); font-size:0.75rem;">${String(item.id).padStart(3,'0')}</td>
+          <td>
+            <div class="item-name">${item.name}</div>
+            ${item.category ? `<div class="item-category">${item.category}</div>` : ''}
+          </td>
+          <td style="color:var(--text-muted); font-size:0.8rem;">${item.supplier || '—'}</td>
+          <td>
+            <span class="qty-badge ${isLow ? 'low' : 'ok'}">${item.quantity} ${item.unit}</span>
+            ${isLow ? `<div class="low-stock-flag">⚠ low</div>` : ''}
+          </td>
+          <td class="price-cell">₹${item.cost_price.toFixed(2)}</td>
+          <td class="price-cell">₹${(item.wholesale_price||0).toFixed(2)}</td>
+          <td class="price-cell">₹${(item.dealer_price||0).toFixed(2)}</td>
+          <td class="price-cell">₹${item.selling_price.toFixed(2)}</td>
+          <td>
+            <div class="actions">
+              <button class="btn btn-stock" onclick="openStockModal(${item.id})">STOCK</button>
+              <button class="btn btn-edit" onclick="openEditModal(${item.id})">EDIT</button>
+              <button class="btn btn-warn" onclick="deleteItem(${item.id})">DEL</button>
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // ── Filtering ───────────────────────────────────────────
+  function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterItems();
+  }
+
+  function filterItems() {
+    const q = document.getElementById('search').value.toLowerCase();
+    let filtered = allItems.filter(i =>
+      i.name.toLowerCase().includes(q) ||
+      (i.category || '').toLowerCase().includes(q) ||
+      (i.supplier || '').toLowerCase().includes(q)
+    );
+    if (currentFilter === 'low') {
+      filtered = filtered.filter(i => i.quantity <= i.low_stock_threshold);
+    } else if (currentFilter.startsWith('cat:')) {
+      const cat = currentFilter.slice(4);
+      filtered = filtered.filter(i => (i.category || '') === cat);
+    }
+    renderTable(filtered);
+  }
+
+  function renderCategoryFilters(categories) {
+    const group = document.getElementById('filter-group');
+    // Remove existing category filter buttons
+    group.querySelectorAll('.cat-filter').forEach(b => b.remove());
+    categories.forEach(c => {
+      const btn = document.createElement('button');
+      btn.className = 'filter-btn cat-filter';
+      btn.textContent = c.name;
+      btn.onclick = () => setFilter('cat:' + c.name, btn);
+      group.appendChild(btn);
+    });
+  }
+
+  // ── Add Item ────────────────────────────────────────────
+  async function addItem() {
+    const name = document.getElementById('f-name').value.trim();
+    if (!name) { showToast('Product name is required', 'error'); return; }
+
+    const payload = {
+      name,
+      category: document.getElementById('f-category').value || null,
+      supplier: document.getElementById('f-supplier').value.trim() || null,
+      quantity: parseInt(document.getElementById('f-quantity').value) || 0,
+      unit: document.getElementById('f-unit').value || 'pcs',
+      cost_price: parseFloat(document.getElementById('f-cost').value) || 0,
+      wholesale_price: parseFloat(document.getElementById('f-wholesale').value) || 0,
+      dealer_price: parseFloat(document.getElementById('f-dealer').value) || 0,
+      selling_price: parseFloat(document.getElementById('f-selling').value) || 0,
+      hsn_code: document.getElementById('f-hsn').value.trim() || null,
+      gst_rate: parseFloat(document.getElementById('f-gst').value) || 0,
+      low_stock_threshold: parseInt(document.getElementById('f-threshold').value) || 10,
+    };
+
+    try {
+      const res = await fetch('/api/items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(err.detail || 'Error adding item', 'error');
+        return;
+      }
+      clearForm();
+      await loadInventory();
+      showToast('Item added successfully');
+    } catch (e) {
+      showToast('Server error', 'error');
+    }
+  }
+
+  function clearForm() {
+    ['f-name','f-category','f-supplier','f-quantity','f-cost','f-wholesale','f-dealer','f-selling','f-hsn','f-threshold'].forEach(id => {
+      document.getElementById(id).value = '';
+    });
+  }
+
+  // ── Edit Modal ──────────────────────────────────────────
+  function openAddModal() {
+    document.querySelector('.sidebar').scrollIntoView({ behavior: 'smooth' });
+    document.getElementById('f-name').focus();
+  }
+
+  function openEditModal(id) {
+    const item = allItems.find(i => i.id === id);
+    if (!item) return;
+    document.getElementById('edit-id').value = item.id;
+    document.getElementById('edit-name').value = item.name;
+    document.getElementById('edit-category').value = item.category || '';
+    document.getElementById('edit-supplier').value = item.supplier || '';
+    document.getElementById('edit-unit').value = item.unit || '';
+    document.getElementById('edit-quantity').value = item.quantity;
+    document.getElementById('edit-cost').value = item.cost_price;
+    document.getElementById('edit-wholesale').value = item.wholesale_price || 0;
+    document.getElementById('edit-dealer').value = item.dealer_price || 0;
+    document.getElementById('edit-selling').value = item.selling_price;
+    document.getElementById('edit-hsn').value = item.hsn_code || '';
+    document.getElementById('edit-gst').value = item.gst_rate || 0;
+    document.getElementById('edit-threshold').value = item.low_stock_threshold;
+    document.getElementById('edit-modal').classList.add('active');
+  }
+
+  async function saveEdit() {
+    const id = document.getElementById('edit-id').value;
+    const payload = {
+      name: document.getElementById('edit-name').value.trim(),
+      category: document.getElementById('edit-category').value || null,
+      supplier: document.getElementById('edit-supplier').value.trim() || null,
+      unit: document.getElementById('edit-unit').value || 'pcs',
+      quantity: parseInt(document.getElementById('edit-quantity').value),
+      cost_price: parseFloat(document.getElementById('edit-cost').value),
+      wholesale_price: parseFloat(document.getElementById('edit-wholesale').value) || 0,
+      dealer_price: parseFloat(document.getElementById('edit-dealer').value) || 0,
+      selling_price: parseFloat(document.getElementById('edit-selling').value),
+      hsn_code: document.getElementById('edit-hsn').value.trim() || null,
+      gst_rate: parseFloat(document.getElementById('edit-gst').value) || 0,
+      low_stock_threshold: parseInt(document.getElementById('edit-threshold').value),
+    };
+
+    try {
+      const res = await fetch(`/api/items/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) { showToast('Error updating item', 'error'); return; }
+      closeModal('edit-modal');
+      await loadInventory();
+      showToast('Item updated');
+    } catch (e) {
+      showToast('Server error', 'error');
+    }
+  }
+
+  // ── Stock Modal ─────────────────────────────────────────
+  function openStockModal(id) {
+    const item = allItems.find(i => i.id === id);
+    if (!item) return;
+    stockQty = 0;
+    stockDirection = 'add';
+    document.getElementById('stock-id').value = id;
+    document.getElementById('stock-item-name').textContent = item.name;
+    document.getElementById('stock-current').textContent = `${item.quantity} ${item.unit}`;
+    document.getElementById('stock-qty-display').textContent = '0';
+    document.getElementById('dir-add').classList.add('active');
+    document.getElementById('dir-remove').classList.remove('active');
+    document.getElementById('stock-modal').classList.add('active');
+  }
+
+  function setDirection(dir) {
+    stockDirection = dir;
+    document.getElementById('dir-add').classList.toggle('active', dir === 'add');
+    document.getElementById('dir-remove').classList.toggle('active', dir === 'remove');
+  }
+
+  function adjustStockVal(val) {
+    stockQty = Math.max(0, stockQty + val);
+    document.getElementById('stock-qty-display').textContent = stockQty;
+  }
+
+  async function saveStock() {
+    const id = document.getElementById('stock-id').value;
+    const change = stockDirection === 'add' ? stockQty : -stockQty;
+    if (change === 0) { showToast('No change to apply', 'error'); return; }
+
+    try {
+      const res = await fetch(`/api/items/${id}/stock`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity_change: change })
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(err.detail || 'Error updating stock', 'error');
+        return;
+      }
+      closeModal('stock-modal');
+      await loadInventory();
+      showToast(`Stock ${stockDirection === 'add' ? 'added' : 'removed'}: ${Math.abs(change)} units`);
+    } catch (e) {
+      showToast('Server error', 'error');
+    }
+  }
+
+  // ── Delete ──────────────────────────────────────────────
+  async function deleteItem(id) {
+    if (!confirm('Delete this item from inventory?')) return;
+    try {
+      await fetch(`/api/items/${id}`, { method: 'DELETE' });
+      await loadInventory();
+      showToast('Item deleted');
+    } catch (e) {
+      showToast('Error deleting item', 'error');
+    }
+  }
+
+  // ── Helpers ─────────────────────────────────────────────
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+  }
+
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type === 'error' ? 'error' : ''} show`;
+    setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.remove('active');
+    });
+  });
+
+  // ── View Switching ───────────────────────────────────────
+  let currentView = 'inventory';
+  const views = ['inventory', 'suppliers', 'categories', 'units', 'customers', 'purchases', 'billing'];
+  const newLabels = { inventory: '+ NEW ITEM', suppliers: '+ NEW SUPPLIER', categories: '+ NEW CATEGORY', units: '+ NEW UNIT', customers: '+ NEW CUSTOMER', purchases: '+ NEW PURCHASE', billing: '+ NEW BILL' };
+  const addModals = { suppliers: 'add-supplier-modal', categories: 'add-category-modal', units: 'add-unit-modal', customers: 'add-customer-modal', purchases: 'create-purchase-modal', billing: 'create-bill-modal' };
+  const loaders = { suppliers: loadSuppliers, categories: loadCategories, units: loadUnits, customers: loadCustomers, purchases: loadPurchases, billing: loadBills };
+
+  // ── Nav group dropdowns ──────────────────────────────────
+  const mastersViews      = ['suppliers', 'categories', 'units', 'customers'];
+  const transactionViews  = ['purchases', 'billing'];
+
+  function toggleNavGroup(group) {
+    const el = document.getElementById('group-' + group);
+    const isOpen = el.classList.contains('open');
+    closeNavGroups();
+    if (!isOpen) el.classList.add('open');
+  }
+
+  function closeNavGroups() {
+    document.querySelectorAll('.nav-group').forEach(g => g.classList.remove('open'));
+  }
+
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.nav-group') && !e.target.closest('.nav-group-btn')) {
+      closeNavGroups();
+    }
+  });
+
+  const flowSteps = ['suppliers', 'purchases', 'inventory', 'billing', 'customers'];
+  function switchView(view) {
+    currentView = view;
+    views.forEach(v => {
+      document.getElementById('view-' + v).classList.toggle('active', v === view);
+      const tab = document.getElementById('tab-' + v);
+      if (tab) tab.classList.toggle('active', v === view);
+    });
+    // Update group button active state
+    const inMasters     = mastersViews.includes(view);
+    const inTransaction = transactionViews.includes(view);
+    document.getElementById('group-btn-masters').classList.toggle('active', inMasters);
+    document.getElementById('group-btn-transactions').classList.toggle('active', inTransaction);
+    // Highlight flow step
+    flowSteps.forEach(s => {
+      const el = document.getElementById('flow-' + s);
+      if (el) el.classList.toggle('active-step', s === view);
+    });
+    document.getElementById('btn-new').textContent = newLabels[view];
+    if (loaders[view]) loaders[view]();
+  }
+
+  function handleNew() {
+    if (currentView === 'inventory') openAddModal();
+    else if (currentView === 'billing') openCreateBill();
+    else if (currentView === 'purchases') openCreatePurchase();
+    else document.getElementById(addModals[currentView]).classList.add('active');
+  }
+
+  // ── Suppliers CRUD ───────────────────────────────────────
+  let allSuppliers = [];
+
+  async function loadSuppliers() {
+    try {
+      const res = await fetch('/api/suppliers');
+      allSuppliers = await res.json();
+      renderSuppliers(allSuppliers);
+      document.getElementById('suppliers-datalist').innerHTML =
+        allSuppliers.map(s => `<option value="${s.name}">`).join('');
+    } catch (e) {
+      showToast('Failed to load suppliers', 'error');
+    }
+  }
+
+  function renderSuppliers(suppliers) {
+    const tbody = document.getElementById('suppliers-table');
+    if (!suppliers.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No suppliers found</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = suppliers.map(s => `
+      <tr>
+        <td style="font-family:var(--mono); color:var(--text-muted); font-size:0.75rem;">${String(s.id).padStart(3,'0')}</td>
+        <td><div class="item-name">${s.name}</div></td>
+        <td style="color:var(--text-muted); font-size:0.8rem;">${s.contact_person || '—'}</td>
+        <td style="font-family:var(--mono); font-size:0.8rem;">${s.phone || '—'}</td>
+        <td style="font-size:0.8rem;">${s.email || '—'}</td>
+        <td style="color:var(--text-muted); font-size:0.8rem;">${s.address || '—'}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-edit" onclick="openEditSupplierModal(${s.id})">EDIT</button>
+            <button class="btn btn-warn" onclick="deleteSupplier(${s.id})">DEL</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  async function addSupplier() {
+    const name = document.getElementById('sf-name').value.trim();
+    if (!name) { showToast('Supplier name is required', 'error'); return; }
+    const payload = {
+      name,
+      contact_person: document.getElementById('sf-contact').value.trim() || null,
+      phone: document.getElementById('sf-phone').value.trim() || null,
+      email: document.getElementById('sf-email').value.trim() || null,
+      address: document.getElementById('sf-address').value.trim() || null,
+    };
+    try {
+      const res = await fetch('/api/suppliers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        showToast(err.detail || 'Error adding supplier', 'error');
+        return;
+      }
+      closeModal('add-supplier-modal');
+      ['sf-name','sf-contact','sf-phone','sf-email','sf-address'].forEach(id => document.getElementById(id).value = '');
+      await loadSuppliers();
+      showToast('Supplier added');
+    } catch (e) {
+      showToast('Server error', 'error');
+    }
+  }
+
+  function openEditSupplierModal(id) {
+    const s = allSuppliers.find(s => s.id === id);
+    if (!s) return;
+    document.getElementById('edit-supplier-id').value = s.id;
+    document.getElementById('edit-sf-name').value = s.name;
+    document.getElementById('edit-sf-contact').value = s.contact_person || '';
+    document.getElementById('edit-sf-phone').value = s.phone || '';
+    document.getElementById('edit-sf-email').value = s.email || '';
+    document.getElementById('edit-sf-address').value = s.address || '';
+    document.getElementById('edit-supplier-modal').classList.add('active');
+  }
+
+  async function saveSupplier() {
+    const id = document.getElementById('edit-supplier-id').value;
+    const payload = {
+      name: document.getElementById('edit-sf-name').value.trim(),
+      contact_person: document.getElementById('edit-sf-contact').value.trim() || null,
+      phone: document.getElementById('edit-sf-phone').value.trim() || null,
+      email: document.getElementById('edit-sf-email').value.trim() || null,
+      address: document.getElementById('edit-sf-address').value.trim() || null,
+    };
+    try {
+      const res = await fetch(`/api/suppliers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) { showToast('Error updating supplier', 'error'); return; }
+      closeModal('edit-supplier-modal');
+      await loadSuppliers();
+      showToast('Supplier updated');
+    } catch (e) {
+      showToast('Server error', 'error');
+    }
+  }
+
+  async function deleteSupplier(id) {
+    if (!confirm('Delete this supplier?')) return;
+    try {
+      await fetch(`/api/suppliers/${id}`, { method: 'DELETE' });
+      await loadSuppliers();
+      showToast('Supplier deleted');
+    } catch (e) {
+      showToast('Error deleting supplier', 'error');
+    }
+  }
+
+  // ── Categories CRUD ──────────────────────────────────────
+  let allCategories = [];
+
+  async function loadCategories() {
+    try {
+      const res = await fetch('/api/categories');
+      allCategories = await res.json();
+      renderCategories(allCategories);
+    } catch (e) {
+      showToast('Failed to load categories', 'error');
+    }
+  }
+
+  function renderCategories(categories) {
+    const tbody = document.getElementById('categories-table');
+    if (!categories.length) {
+      tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No categories found</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = categories.map(c => `
+      <tr>
+        <td style="font-family:var(--mono); color:var(--text-muted); font-size:0.75rem;">${String(c.id).padStart(3,'0')}</td>
+        <td><div class="item-name">${c.name}</div></td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-edit" onclick="openEditCategoryModal(${c.id})">EDIT</button>
+            <button class="btn btn-warn" onclick="deleteCategory(${c.id})">DEL</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  async function addCategory() {
+    const name = document.getElementById('cf-name').value.trim();
+    if (!name) { showToast('Category name is required', 'error'); return; }
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      closeModal('add-category-modal');
+      document.getElementById('cf-name').value = '';
+      await loadCategories();
+      await loadDropdowns();
+      showToast('Category added');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  function openEditCategoryModal(id) {
+    const c = allCategories.find(c => c.id === id);
+    if (!c) return;
+    document.getElementById('edit-category-id').value = c.id;
+    document.getElementById('edit-cf-name').value = c.name;
+    document.getElementById('edit-category-modal').classList.add('active');
+  }
+
+  async function saveCategory() {
+    const id = document.getElementById('edit-category-id').value;
+    const name = document.getElementById('edit-cf-name').value.trim();
+    if (!name) { showToast('Category name is required', 'error'); return; }
+    try {
+      const res = await fetch(`/api/categories/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (!res.ok) { showToast('Error updating category', 'error'); return; }
+      closeModal('edit-category-modal');
+      await loadCategories();
+      await loadDropdowns();
+      showToast('Category updated');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function deleteCategory(id) {
+    if (!confirm('Delete this category?')) return;
+    try {
+      await fetch(`/api/categories/${id}`, { method: 'DELETE' });
+      await loadCategories();
+      await loadDropdowns();
+      showToast('Category deleted');
+    } catch (e) { showToast('Error deleting category', 'error'); }
+  }
+
+  // ── Units CRUD ───────────────────────────────────────────
+  let allUnits = [];
+
+  async function loadUnits() {
+    try {
+      const res = await fetch('/api/units');
+      allUnits = await res.json();
+      renderUnits(allUnits);
+    } catch (e) {
+      showToast('Failed to load units', 'error');
+    }
+  }
+
+  function renderUnits(units) {
+    const tbody = document.getElementById('units-table');
+    if (!units.length) {
+      tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No units found</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = units.map(u => `
+      <tr>
+        <td style="font-family:var(--mono); color:var(--text-muted); font-size:0.75rem;">${String(u.id).padStart(3,'0')}</td>
+        <td><div class="item-name">${u.name}</div></td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-edit" onclick="openEditUnitModal(${u.id})">EDIT</button>
+            <button class="btn btn-warn" onclick="deleteUnit(${u.id})">DEL</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  async function addUnit() {
+    const name = document.getElementById('uf-name').value.trim();
+    if (!name) { showToast('Unit name is required', 'error'); return; }
+    try {
+      const res = await fetch('/api/units', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      closeModal('add-unit-modal');
+      document.getElementById('uf-name').value = '';
+      await loadUnits();
+      await loadDropdowns();
+      showToast('Unit added');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  function openEditUnitModal(id) {
+    const u = allUnits.find(u => u.id === id);
+    if (!u) return;
+    document.getElementById('edit-unit-id').value = u.id;
+    document.getElementById('edit-uf-name').value = u.name;
+    document.getElementById('edit-unit-modal').classList.add('active');
+  }
+
+  async function saveUnit() {
+    const id = document.getElementById('edit-unit-id').value;
+    const name = document.getElementById('edit-uf-name').value.trim();
+    if (!name) { showToast('Unit name is required', 'error'); return; }
+    try {
+      const res = await fetch(`/api/units/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (!res.ok) { showToast('Error updating unit', 'error'); return; }
+      closeModal('edit-unit-modal');
+      await loadUnits();
+      await loadDropdowns();
+      showToast('Unit updated');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function deleteUnit(id) {
+    if (!confirm('Delete this unit?')) return;
+    try {
+      await fetch(`/api/units/${id}`, { method: 'DELETE' });
+      await loadUnits();
+      await loadDropdowns();
+      showToast('Unit deleted');
+    } catch (e) { showToast('Error deleting unit', 'error'); }
+  }
+
+  // ── Billing CRUD ─────────────────────────────────────────
+  let allBills = [];
+  let viewingBillId = null;
+
+  async function loadBills() {
+    try {
+      const res = await fetch('/api/bills');
+      allBills = await res.json();
+      renderBills(allBills);
+    } catch (e) {
+      showToast('Failed to load bills', 'error');
+    }
+  }
+
+  function renderBills(bills) {
+    const tbody = document.getElementById('bills-table');
+    if (!bills.length) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No bills yet</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = bills.map(b => {
+      const date = new Date(b.created_at).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
+      const cancelBtn = b.status === 'paid'
+        ? `<button class="btn btn-warn" onclick="event.stopPropagation(); quickCancelBill(${b.id})">CANCEL</button>`
+        : '';
+      return `
+        <tr style="cursor:pointer;" onclick="viewBill(${b.id})">
+          <td style="font-family:var(--mono); font-size:0.8rem;">${b.invoice_number}</td>
+          <td><div class="item-name">${b.customer_name}</div></td>
+          <td style="color:var(--text-muted); font-size:0.8rem;">${b.customer_phone || '—'}</td>
+          <td style="font-family:var(--mono); font-size:0.8rem; text-align:center;">${b.items.length}</td>
+          <td style="font-family:var(--mono); font-size:0.85rem; color:var(--accent);">₹${b.total_amount.toLocaleString()}</td>
+          <td><span class="status-badge ${b.status}">${b.status}</span></td>
+          <td style="color:var(--text-muted); font-size:0.8rem;">${date}</td>
+          <td><div class="actions">${cancelBtn}</div></td>
+        </tr>`;
+    }).join('');
+  }
+
+  // ── Create Bill ──────────────────────────────────────────
+  // ── Billing customer type ─────────────────────────────────
+  let billingCustomerType = 'retailer';
+
+  function setBillingType(type) {
+    billingCustomerType = type;
+    ['wholesaler','dealer','retailer'].forEach(t => {
+      const el = document.getElementById('ctype-' + t);
+      el.className = 'ctype-radio' + (t === type ? ' selected-' + t : '');
+    });
+    // Recalc all existing line items with new prices
+    document.querySelectorAll('.bill-line-item').forEach(row => {
+      const sel = row.querySelector('select');
+      const opt = sel.options[sel.selectedIndex];
+      if (opt && opt.value) {
+        const price = opt.dataset[type] || opt.dataset.retail || '';
+        row.querySelectorAll('input')[1].value = price;
+        recalcLine(row);
+      }
+    });
+  }
+
+  function openCreateBill() {
+    billingCustomerType = 'retailer';
+    ['wholesaler','dealer','retailer'].forEach(t => {
+      const el = document.getElementById('ctype-' + t);
+      el.className = 'ctype-radio' + (t === 'retailer' ? ' selected-retailer' : '');
+    });
+    document.getElementById('bill-customer-name').value = '';
+    document.getElementById('bill-customer-phone').value = '';
+    document.getElementById('bill-lines').innerHTML = '';
+    document.getElementById('bill-taxable').textContent = '₹0.00';
+    document.getElementById('bill-igst').textContent = '₹0.00';
+    document.getElementById('bill-grand-total').textContent = '₹0.00';
+    addBillLine();
+    document.getElementById('create-bill-modal').classList.add('active');
+  }
+
+  function addBillLine() {
+    const container = document.getElementById('bill-lines');
+    const idx = container.children.length;
+    const itemOpts = allItems.map(i =>
+      `<option value="${i.id}" data-retail="${i.selling_price}" data-wholesale="${i.wholesale_price||0}" data-dealer="${i.dealer_price||0}" data-gst="${i.gst_rate||0}">${i.name} (${i.quantity} ${i.unit})</option>`
+    ).join('');
+    const div = document.createElement('div');
+    div.className = 'bill-line-item';
+    div.innerHTML = `
+      <select onchange="onLineItemChange(this)" data-idx="${idx}">
+        <option value="">— select —</option>${itemOpts}
+      </select>
+      <input type="number" min="1" value="1" placeholder="Qty" oninput="recalcLine(this.closest('.bill-line-item'))" data-idx="${idx}">
+      <input type="number" min="0" step="0.01" value="" placeholder="Price" oninput="recalcLine(this.closest('.bill-line-item'))" data-idx="${idx}">
+      <div class="line-total-display">₹0.00</div>
+      <button class="remove-line-btn" onclick="removeBillLine(this)">×</button>`;
+    container.appendChild(div);
+  }
+
+  function onLineItemChange(sel) {
+    const row = sel.closest('.bill-line-item');
+    const opt = sel.options[sel.selectedIndex];
+    const price = opt ? (opt.dataset[billingCustomerType] || opt.dataset.retail || '') : '';
+    row.querySelectorAll('input')[1].value = price;
+    recalcLine(row);
+  }
+
+  function recalcLine(row) {
+    const sel = row.querySelector('select');
+    const opt = sel.options[sel.selectedIndex];
+    const gstRate = opt ? parseFloat(opt.dataset.gst || 0) : 0;
+    const qty = parseFloat(row.querySelectorAll('input')[0].value) || 0;
+    const price = parseFloat(row.querySelectorAll('input')[1].value) || 0;
+    const taxable = qty * price;
+    const igst = taxable * gstRate / 100;
+    const total = taxable + igst;
+    row.querySelector('.line-total-display').textContent = '₹' + total.toFixed(2);
+    row.dataset.gst = gstRate;
+    recalcGrandTotal();
+  }
+
+  function removeBillLine(btn) {
+    btn.closest('.bill-line-item').remove();
+    recalcGrandTotal();
+  }
+
+  function recalcGrandTotal() {
+    let taxable = 0, igst = 0;
+    document.querySelectorAll('#bill-lines .bill-line-item').forEach(row => {
+      const sel = row.querySelector('select');
+      const opt = sel.options[sel.selectedIndex];
+      const gstRate = opt ? parseFloat(opt.dataset.gst || 0) : 0;
+      const qty = parseFloat(row.querySelectorAll('input')[0].value) || 0;
+      const price = parseFloat(row.querySelectorAll('input')[1].value) || 0;
+      const t = qty * price;
+      taxable += t;
+      igst += t * gstRate / 100;
+    });
+    const total = taxable + igst;
+    document.getElementById('bill-taxable').textContent = '₹' + taxable.toFixed(2);
+    document.getElementById('bill-igst').textContent = '₹' + igst.toFixed(2);
+    document.getElementById('bill-grand-total').textContent = '₹' + total.toFixed(2);
+  }
+
+  async function submitBill() {
+    const customerName = document.getElementById('bill-customer-name').value.trim();
+    if (!customerName) { showToast('Customer name is required', 'error'); return; }
+
+    const lines = [];
+    let valid = true;
+    document.querySelectorAll('.bill-line-item').forEach(row => {
+      const itemId = parseInt(row.querySelector('select').value);
+      const qty = parseInt(row.querySelectorAll('input')[0].value);
+      const price = parseFloat(row.querySelectorAll('input')[1].value);
+      if (!itemId || !qty || isNaN(price)) { valid = false; return; }
+      lines.push({ item_id: itemId, quantity: qty, unit_price: price });
+    });
+
+    if (!valid || !lines.length) { showToast('Fill all line items correctly', 'error'); return; }
+
+    try {
+      const res = await fetch('/api/bills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer_name: customerName,
+          customer_phone: document.getElementById('bill-customer-phone').value.trim() || null,
+          customer_type: billingCustomerType,
+          items: lines
+        })
+      });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error creating bill', 'error'); return; }
+      closeModal('create-bill-modal');
+      await loadBills();
+      await loadInventory();  // refresh stock
+      showToast('Bill created successfully');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  // ── View Bill ────────────────────────────────────────────
+  async function viewBill(id) {
+    try {
+      const res = await fetch(`/api/bills/${id}`);
+      const bill = await res.json();
+      viewingBillId = bill.id;
+      document.getElementById('view-bill-title').textContent = bill.invoice_number;
+      document.getElementById('cancel-bill-btn').style.display = bill.status === 'paid' ? '' : 'none';
+
+      const rows = bill.items.map(i => `
+        <tr>
+          <td>${i.item_name}<br><span style="font-size:0.7rem;color:var(--text-muted);">HSN: ${i.hsn_code || '—'}</span></td>
+          <td style="font-family:var(--mono); text-align:center;">${i.quantity}</td>
+          <td style="font-family:var(--mono);">₹${i.unit_price.toFixed(2)}</td>
+          <td style="font-family:var(--mono); font-size:0.75rem;">${i.gst_rate}%<br>₹${(i.igst_amount||0).toFixed(2)}</td>
+          <td style="font-family:var(--mono); color:var(--accent);">₹${i.line_total.toFixed(2)}</td>
+        </tr>`).join('');
+
+      document.getElementById('view-bill-body').innerHTML = `
+        <div style="display:flex; gap:2rem; margin-bottom:1rem;">
+          <div>
+            <div class="stat-label">Customer</div>
+            <div style="font-weight:600; margin-top:0.25rem;">${bill.customer_name}</div>
+            ${bill.customer_phone ? `<div style="color:var(--text-muted); font-size:0.85rem;">${bill.customer_phone}</div>` : ''}
+          </div>
+          <div>
+            <div class="stat-label">Status</div>
+            <div style="margin-top:0.25rem;"><span class="status-badge ${bill.status}">${bill.status}</span></div>
+          </div>
+          <div>
+            <div class="stat-label">Date</div>
+            <div style="font-family:var(--mono); font-size:0.85rem; margin-top:0.25rem;">${new Date(bill.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})}</div>
+          </div>
+        </div>
+        <table class="bill-detail-table">
+          <thead><tr><th>Item / HSN</th><th style="text-align:center;">Qty</th><th>Unit Price</th><th>IGST</th><th>Total</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <div style="margin-top:0.75rem; text-align:right; font-family:var(--mono); font-size:0.75rem; color:var(--text-muted); line-height:1.8;">
+          Taxable: ₹${(bill.taxable_amount||0).toFixed(2)}<br>
+          IGST: ₹${(bill.igst_amount||0).toFixed(2)}
+        </div>
+        <div class="bill-total-row">
+          <span style="font-family:var(--mono); font-size:0.7rem; color:var(--text-muted); letter-spacing:1px;">GRAND TOTAL</span>
+          <span class="bill-grand-total">₹${bill.total_amount.toLocaleString()}</span>
+        </div>`;
+
+      document.getElementById('view-bill-modal').classList.add('active');
+    } catch (e) { showToast('Failed to load bill', 'error'); }
+  }
+
+  async function cancelCurrentBill() {
+    if (!viewingBillId) return;
+    if (!confirm('Cancel this bill? Stock will be restored.')) return;
+    try {
+      const res = await fetch(`/api/bills/${viewingBillId}/cancel`, { method: 'PATCH' });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      closeModal('view-bill-modal');
+      await loadBills();
+      await loadInventory();
+      showToast('Bill cancelled, stock restored');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function quickCancelBill(id) {
+    if (!confirm('Cancel this bill? Stock will be restored.')) return;
+    try {
+      const res = await fetch(`/api/bills/${id}/cancel`, { method: 'PATCH' });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      await loadBills();
+      await loadInventory();
+      showToast('Bill cancelled, stock restored');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  // ── Export Inventory to Excel (.xlsx via CSV) ────────────
+  function exportInventoryExcel() {
+    if (!allItems.length) { showToast('No items to export', 'error'); return; }
+
+    const headers = ['ID', 'Name', 'Category', 'Supplier', 'Quantity', 'Unit', 'Cost Price', 'Selling Price', 'Low Stock Threshold', 'Created At'];
+    const rows = allItems.map(i => [
+      i.id,
+      i.name,
+      i.category || '',
+      i.supplier || '',
+      i.quantity,
+      i.unit,
+      i.cost_price.toFixed(2),
+      i.selling_price.toFixed(2),
+      i.low_stock_threshold,
+      i.created_at ? new Date(i.created_at).toLocaleDateString('en-IN') : ''
+    ]);
+
+    const csv = [headers, ...rows]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+      .join('\r\n');
+
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `inventory_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Inventory exported');
+  }
+
+  // ── Print Bill ───────────────────────────────────────────
+  function printBill() {
+    if (!viewingBillId) return;
+    const bill = allBills.find(b => b.id === viewingBillId);
+    if (!bill) return;
+
+    const gstin   = localStorage.getItem('sk-gstin') || '';
+    const bizName = localStorage.getItem('sk-biz-name') || 'SK Gift Collection';
+    const bizAddr = localStorage.getItem('sk-biz-address') || '';
+    const bizPhone= localStorage.getItem('sk-biz-phone') || '';
+    const invoiceNum = bill.invoice_number;
+    const date = new Date(bill.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' });
+
+    // Build HSN-wise IGST summary
+    const hsnMap = {};
+    bill.items.forEach(i => {
+      const hsn = i.hsn_code || 'N/A';
+      const rate = i.gst_rate || 0;
+      const key = `${hsn}_${rate}`;
+      if (!hsnMap[key]) hsnMap[key] = { hsn, rate, taxable: 0, igst: 0 };
+      hsnMap[key].taxable += i.taxable_amount || 0;
+      hsnMap[key].igst    += i.igst_amount    || 0;
+    });
+    const hsnRows = Object.values(hsnMap).map(h => `
+      <tr>
+        <td>${h.hsn}</td>
+        <td class="num">&#8377;${h.taxable.toFixed(2)}</td>
+        <td class="num">${h.rate}%</td>
+        <td class="num">&#8377;${h.igst.toFixed(2)}</td>
+        <td class="num">&#8377;${(h.taxable + h.igst).toFixed(2)}</td>
+      </tr>`).join('');
+
+    const win = window.open('', '_blank', 'width=750,height=700');
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${invoiceNum}</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',Arial,sans-serif; color:#111; padding:40px; font-size:13px; }
+    .header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:24px; padding-bottom:16px; border-bottom:2px solid #111; }
+    .brand { font-size:1.5rem; font-weight:800; letter-spacing:3px; color:#c4516a; }
+    .brand-sub { font-size:0.72rem; letter-spacing:1px; color:#888; margin-top:4px; }
+    .invoice-meta { text-align:right; }
+    .invoice-meta h2 { font-size:1.1rem; font-weight:700; letter-spacing:1px; }
+    .invoice-meta p { color:#666; font-size:0.8rem; margin-top:3px; }
+    .gstin-tag { display:inline-block; background:#f5ede8; border:1px solid #d4bfb5; padding:2px 8px; border-radius:2px; font-size:0.7rem; letter-spacing:1px; margin-top:6px; color:#888; }
+    .bill-to { background:#fdf8f6; border-left:3px solid #c4516a; padding:12px 16px; margin-bottom:20px; border-radius:2px; }
+    .bill-to .lbl { font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:#999; margin-bottom:3px; }
+    .bill-to .name { font-size:0.95rem; font-weight:600; }
+    .bill-to .sub { color:#666; font-size:0.8rem; margin-top:2px; }
+    table { width:100%; border-collapse:collapse; margin-bottom:20px; }
+    thead { background:#f5ede8; }
+    th { padding:8px 10px; text-align:left; font-size:0.65rem; letter-spacing:1.5px; text-transform:uppercase; color:#666; }
+    td { padding:8px 10px; border-bottom:1px solid #eee; font-size:0.85rem; }
+    td.num { text-align:right; font-family:monospace; }
+    td.muted { color:#999; font-size:0.75rem; }
+    .section-title { font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:#999; margin:16px 0 8px; }
+    .tax-summary { background:#fdf8f6; border:1px solid #e8dbd6; border-radius:2px; }
+    .totals { margin-top:16px; border-top:2px solid #111; padding-top:12px; display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+    .tot-row { display:flex; gap:48px; font-size:0.82rem; color:#666; }
+    .tot-row span:last-child { font-family:monospace; min-width:90px; text-align:right; }
+    .grand { display:flex; gap:48px; margin-top:6px; }
+    .grand-lbl { font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; color:#888; }
+    .grand-val { font-size:1.4rem; font-weight:800; color:#c4516a; font-family:monospace; }
+    .footer { margin-top:32px; text-align:center; color:#ccc; font-size:0.7rem; border-top:1px solid #eee; padding-top:12px; }
+    @media print { body { padding:20px; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="brand">${bizName.toUpperCase()}</div>
+      <div class="brand-sub">Tax Invoice</div>
+      ${bizAddr ? `<div class="brand-sub" style="margin-top:4px;font-size:0.75rem;color:#666;">${bizAddr.replace(/\n/g,'<br>')}</div>` : ''}
+      ${bizPhone ? `<div class="brand-sub" style="color:#666;">Ph: ${bizPhone}</div>` : ''}
+      ${gstin ? `<div class="gstin-tag">GSTIN: ${gstin}</div>` : '<div class="gstin-tag">GSTIN: Pending</div>'}
+    </div>
+    <div class="invoice-meta">
+      <h2>${invoiceNum}</h2>
+      <p>Date: ${date}</p>
+      <p>Status: ${bill.status.toUpperCase()}</p>
+    </div>
+  </div>
+
+  <div class="bill-to">
+    <div class="lbl">Bill To</div>
+    <div class="name">${bill.customer_name}</div>
+    ${bill.customer_phone ? `<div class="sub">${bill.customer_phone}</div>` : ''}
+    <div class="sub" style="margin-top:4px; text-transform:capitalize;">${bill.customer_type}</div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Item</th><th>HSN</th>
+        <th style="text-align:right;">Qty</th>
+        <th style="text-align:right;">Unit Price</th>
+        <th style="text-align:right;">Taxable</th>
+        <th style="text-align:right;">IGST %</th>
+        <th style="text-align:right;">IGST ₹</th>
+        <th style="text-align:right;">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${bill.items.map((it, idx) => `
+        <tr>
+          <td class="muted">${idx + 1}</td>
+          <td>${it.item_name}</td>
+          <td class="muted">${it.hsn_code || '—'}</td>
+          <td class="num">${it.quantity}</td>
+          <td class="num">&#8377;${it.unit_price.toFixed(2)}</td>
+          <td class="num">&#8377;${(it.taxable_amount||0).toFixed(2)}</td>
+          <td class="num">${it.gst_rate||0}%</td>
+          <td class="num">&#8377;${(it.igst_amount||0).toFixed(2)}</td>
+          <td class="num">&#8377;${it.line_total.toFixed(2)}</td>
+        </tr>`).join('')}
+    </tbody>
+  </table>
+
+  <div class="section-title">HSN / SAC Summary</div>
+  <table class="tax-summary">
+    <thead>
+      <tr><th>HSN Code</th><th style="text-align:right;">Taxable Value</th><th style="text-align:right;">IGST Rate</th><th style="text-align:right;">IGST Amount</th><th style="text-align:right;">Total</th></tr>
+    </thead>
+    <tbody>${hsnRows}</tbody>
+  </table>
+
+  <div class="totals">
+    <div class="tot-row"><span>Taxable Amount</span><span>&#8377;${(bill.taxable_amount||0).toFixed(2)}</span></div>
+    <div class="tot-row"><span>IGST</span><span>&#8377;${(bill.igst_amount||0).toFixed(2)}</span></div>
+    <div class="grand">
+      <div><div class="grand-lbl">Grand Total</div></div>
+      <div><div class="grand-val">&#8377;${bill.total_amount.toLocaleString('en-IN', {minimumFractionDigits:2})}</div></div>
+    </div>
+  </div>
+
+  <div class="footer">SK Gift Collection &mdash; ${new Date().toLocaleString('en-IN')}</div>
+  <script>window.onload = () => { window.print(); }<\/script>
+</body>
+</html>`);
+    win.document.close();
+  }
+
+  // ── Purchases CRUD ───────────────────────────────────────
+  let allPurchases = [];
+  let currentPurchaseId = null;
+
+  async function loadPurchases() {
+    try {
+      const res = await fetch('/api/purchases');
+      allPurchases = await res.json();
+      renderPurchases(allPurchases);
+    } catch (e) {
+      showToast('Failed to load purchases', 'error');
+    }
+  }
+
+  function renderPurchases(purchases) {
+    const tbody = document.getElementById('purchases-table');
+    if (!purchases.length) {
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No purchase bills yet</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = purchases.map(p => `
+      <tr>
+        <td style="font-family:var(--mono); font-size:0.8rem; color:var(--accent);">${p.purchase_number}</td>
+        <td><div class="item-name">${p.supplier_name}</div></td>
+        <td style="font-family:var(--mono); font-size:0.75rem; color:var(--text-muted);">${p.supplier_invoice || '—'}</td>
+        <td style="font-family:var(--mono); font-size:0.8rem;">${p.items.length} item${p.items.length !== 1 ? 's' : ''}</td>
+        <td class="price-cell">₹${p.total_amount.toFixed(2)}</td>
+        <td><span class="status-badge ${p.status}">${p.status}</span></td>
+        <td style="font-family:var(--mono); font-size:0.75rem; color:var(--text-muted);">${p.created_at ? new Date(p.created_at).toLocaleDateString('en-IN') : '—'}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-edit" onclick="viewPurchase(${p.id})">VIEW</button>
+            ${p.status === 'received' ? `<button class="btn btn-warn" onclick="cancelPurchaseDirect(${p.id})">CANCEL</button>` : ''}
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  function openCreatePurchase() {
+    document.getElementById('pur-supplier').value = '';
+    document.getElementById('pur-invoice-ref').value = '';
+    document.getElementById('purchase-lines').innerHTML = '';
+    document.getElementById('pur-grand-total').textContent = '₹0.00';
+    addPurchaseLine();
+    document.getElementById('create-purchase-modal').classList.add('active');
+  }
+
+  function addPurchaseLine() {
+    const container = document.getElementById('purchase-lines');
+    const idx = container.children.length;
+    const itemOpts = allItems.map(i =>
+      `<option value="${i.id}">${i.name} (stock: ${i.quantity} ${i.unit})</option>`
+    ).join('');
+    const div = document.createElement('div');
+    div.className = 'bill-line-item';
+    div.innerHTML = `
+      <select data-idx="${idx}">
+        <option value="">— select item —</option>${itemOpts}
+      </select>
+      <input type="number" min="1" value="1" placeholder="Qty" oninput="recalcPurchaseLine(this.closest('.bill-line-item'))" data-idx="${idx}">
+      <input type="number" min="0" step="0.01" value="" placeholder="Unit Cost" oninput="recalcPurchaseLine(this.closest('.bill-line-item'))" data-idx="${idx}">
+      <div class="line-total-display">₹0.00</div>
+      <button class="remove-line-btn" onclick="this.closest('.bill-line-item').remove(); recalcPurchaseTotal()">×</button>`;
+    container.appendChild(div);
+  }
+
+  function recalcPurchaseLine(row) {
+    const inputs = row.querySelectorAll('input');
+    const qty = parseFloat(inputs[0].value) || 0;
+    const cost = parseFloat(inputs[1].value) || 0;
+    const total = qty * cost;
+    row.querySelector('.line-total-display').textContent = '₹' + total.toFixed(2);
+    recalcPurchaseTotal();
+  }
+
+  function recalcPurchaseTotal() {
+    let grand = 0;
+    document.querySelectorAll('#purchase-lines .line-total-display').forEach(el => {
+      grand += parseFloat(el.textContent.replace('₹', '')) || 0;
+    });
+    document.getElementById('pur-grand-total').textContent = '₹' + grand.toFixed(2);
+  }
+
+  async function submitPurchase() {
+    const supplier = document.getElementById('pur-supplier').value.trim();
+    if (!supplier) { showToast('Supplier name is required', 'error'); return; }
+    const lines = [];
+    let valid = true;
+    document.querySelectorAll('#purchase-lines .bill-line-item').forEach(row => {
+      const sel = row.querySelector('select');
+      const inputs = row.querySelectorAll('input');
+      const itemId = parseInt(sel.value);
+      const qty = parseInt(inputs[0].value);
+      const cost = parseFloat(inputs[1].value);
+      if (!itemId || !qty || isNaN(cost)) { valid = false; return; }
+      lines.push({ item_id: itemId, quantity: qty, unit_cost: cost });
+    });
+    if (!valid || !lines.length) { showToast('Fill all item rows correctly', 'error'); return; }
+    try {
+      const res = await fetch('/api/purchases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          supplier_name: supplier,
+          supplier_invoice: document.getElementById('pur-invoice-ref').value.trim() || null,
+          items: lines
+        })
+      });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      closeModal('create-purchase-modal');
+      await loadPurchases();
+      await loadInventory();
+      showToast('Purchase bill recorded — stock updated');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  function viewPurchase(id) {
+    const p = allPurchases.find(x => x.id === id);
+    if (!p) return;
+    currentPurchaseId = id;
+    document.getElementById('view-pur-title').textContent = p.purchase_number;
+    document.getElementById('cancel-pur-btn').style.display = p.status === 'received' ? '' : 'none';
+    document.getElementById('view-pur-body').innerHTML = `
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1rem;">
+        <div><span style="font-family:var(--mono); font-size:0.65rem; color:var(--text-muted); letter-spacing:1px; text-transform:uppercase;">Supplier</span><div style="font-weight:600; margin-top:0.25rem;">${p.supplier_name}</div></div>
+        <div><span style="font-family:var(--mono); font-size:0.65rem; color:var(--text-muted); letter-spacing:1px; text-transform:uppercase;">Supplier Invoice</span><div style="font-family:var(--mono); font-size:0.8rem; margin-top:0.25rem;">${p.supplier_invoice || '—'}</div></div>
+        <div><span style="font-family:var(--mono); font-size:0.65rem; color:var(--text-muted); letter-spacing:1px; text-transform:uppercase;">Date</span><div style="font-family:var(--mono); font-size:0.8rem; margin-top:0.25rem;">${p.created_at ? new Date(p.created_at).toLocaleString('en-IN') : '—'}</div></div>
+        <div><span style="font-family:var(--mono); font-size:0.65rem; color:var(--text-muted); letter-spacing:1px; text-transform:uppercase;">Status</span><div style="margin-top:0.25rem;"><span class="status-badge ${p.status}">${p.status}</span></div></div>
+      </div>
+      <table class="bill-detail-table">
+        <thead><tr><th>Item</th><th>Qty</th><th>Unit Cost</th><th>Total</th></tr></thead>
+        <tbody>
+          ${p.items.map(i => `<tr><td>${i.item_name}</td><td style="font-family:var(--mono);">${i.quantity}</td><td class="price-cell">₹${i.unit_cost.toFixed(2)}</td><td class="price-cell">₹${i.line_total.toFixed(2)}</td></tr>`).join('')}
+        </tbody>
+        <tfoot><tr><td colspan="3" style="text-align:right; font-family:var(--mono); font-size:0.7rem; color:var(--text-muted); padding:0.6rem 0.75rem;">TOTAL</td><td class="price-cell" style="font-weight:700; color:var(--accent);">₹${p.total_amount.toFixed(2)}</td></tr></tfoot>
+      </table>`;
+    document.getElementById('view-purchase-modal').classList.add('active');
+  }
+
+  async function cancelCurrentPurchase() {
+    if (!confirm('Cancel this purchase? Stock will be reversed.')) return;
+    try {
+      await fetch(`/api/purchases/${currentPurchaseId}/cancel`, { method: 'PATCH' });
+      closeModal('view-purchase-modal');
+      await loadPurchases();
+      await loadInventory();
+      showToast('Purchase cancelled — stock reversed');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function cancelPurchaseDirect(id) {
+    if (!confirm('Cancel this purchase? Stock will be reversed.')) return;
+    try {
+      await fetch(`/api/purchases/${id}/cancel`, { method: 'PATCH' });
+      await loadPurchases();
+      await loadInventory();
+      showToast('Purchase cancelled — stock reversed');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  // ── Customers CRUD ───────────────────────────────────────
+  let allCustomers = [];
+
+  async function loadCustomers() {
+    try {
+      const res = await fetch('/api/customers');
+      allCustomers = await res.json();
+      renderCustomers(allCustomers);
+      document.getElementById('customers-datalist').innerHTML =
+        allCustomers.map(c => `<option value="${c.name}">`).join('');
+    } catch (e) {
+      showToast('Failed to load customers', 'error');
+    }
+  }
+
+  function renderCustomers(customers) {
+    const tbody = document.getElementById('customers-table');
+    if (!customers.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No customers found</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = customers.map(c => `
+      <tr>
+        <td style="font-family:var(--mono); color:var(--text-muted); font-size:0.75rem;">${String(c.id).padStart(3,'0')}</td>
+        <td><div class="item-name">${c.name}</div></td>
+        <td><span class="ctype-badge ${c.customer_type}">${c.customer_type}</span></td>
+        <td style="font-family:var(--mono); font-size:0.8rem;">${c.phone || '—'}</td>
+        <td style="font-size:0.8rem;">${c.email || '—'}</td>
+        <td style="color:var(--text-muted); font-size:0.8rem;">${c.address || '—'}</td>
+        <td>
+          <div class="actions">
+            <button class="btn btn-edit" onclick="openEditCustomerModal(${c.id})">EDIT</button>
+            <button class="btn btn-warn" onclick="deleteCustomer(${c.id})">DEL</button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+
+  async function addCustomer() {
+    const name = document.getElementById('cust-name').value.trim();
+    const customer_type = document.getElementById('cust-type').value;
+    if (!name) { showToast('Name is required', 'error'); return; }
+    const payload = {
+      name,
+      customer_type,
+      phone: document.getElementById('cust-phone').value.trim() || null,
+      email: document.getElementById('cust-email').value.trim() || null,
+      address: document.getElementById('cust-address').value.trim() || null,
+    };
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error adding customer', 'error'); return; }
+      closeModal('add-customer-modal');
+      ['cust-name','cust-phone','cust-email','cust-address'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('cust-type').value = 'retailer';
+      await loadCustomers();
+      showToast('Customer added');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  function openEditCustomerModal(id) {
+    const c = allCustomers.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('edit-cust-id').value = c.id;
+    document.getElementById('edit-cust-name').value = c.name;
+    document.getElementById('edit-cust-type').value = c.customer_type;
+    document.getElementById('edit-cust-phone').value = c.phone || '';
+    document.getElementById('edit-cust-email').value = c.email || '';
+    document.getElementById('edit-cust-address').value = c.address || '';
+    document.getElementById('edit-customer-modal').classList.add('active');
+  }
+
+  async function saveCustomer() {
+    const id = document.getElementById('edit-cust-id').value;
+    const payload = {
+      name: document.getElementById('edit-cust-name').value.trim(),
+      customer_type: document.getElementById('edit-cust-type').value,
+      phone: document.getElementById('edit-cust-phone').value.trim() || null,
+      email: document.getElementById('edit-cust-email').value.trim() || null,
+      address: document.getElementById('edit-cust-address').value.trim() || null,
+    };
+    if (!payload.name) { showToast('Name is required', 'error'); return; }
+    try {
+      const res = await fetch(`/api/customers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) { showToast('Error updating customer', 'error'); return; }
+      closeModal('edit-customer-modal');
+      await loadCustomers();
+      showToast('Customer updated');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function deleteCustomer(id) {
+    if (!confirm('Delete this customer?')) return;
+    try {
+      await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+      await loadCustomers();
+      showToast('Customer deleted');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  // ── Theme & Font ─────────────────────────────────────────
+  const FONT_MIN = 11, FONT_MAX = 20;
+
+  function openSettings() {
+    document.getElementById('settings-gstin').value        = localStorage.getItem('sk-gstin') || '';
+    document.getElementById('settings-biz-name').value    = localStorage.getItem('sk-biz-name') || '';
+    document.getElementById('settings-biz-address').value = localStorage.getItem('sk-biz-address') || '';
+    document.getElementById('settings-biz-phone').value   = localStorage.getItem('sk-biz-phone') || '';
+    document.getElementById('gstin-modal').classList.add('active');
+  }
+
+  function saveSettings() {
+    const gstin   = document.getElementById('settings-gstin').value.trim().toUpperCase();
+    const name    = document.getElementById('settings-biz-name').value.trim();
+    const address = document.getElementById('settings-biz-address').value.trim();
+    const phone   = document.getElementById('settings-biz-phone').value.trim();
+    if (gstin) localStorage.setItem('sk-gstin', gstin);
+    else localStorage.removeItem('sk-gstin');
+    if (name)    localStorage.setItem('sk-biz-name', name);
+    else localStorage.removeItem('sk-biz-name');
+    if (address) localStorage.setItem('sk-biz-address', address);
+    else localStorage.removeItem('sk-biz-address');
+    if (phone)   localStorage.setItem('sk-biz-phone', phone);
+    else localStorage.removeItem('sk-biz-phone');
+    closeModal('gstin-modal');
+  }
+
+  function setTheme(name) {
+    document.documentElement.setAttribute('data-theme', name);
+    document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('theme-' + name).classList.add('active');
+    localStorage.setItem('invntry-theme', name);
+  }
+
+  function adjustFont(delta) {
+    const current = parseInt(document.documentElement.style.fontSize) || 14;
+    const next = Math.min(FONT_MAX, Math.max(FONT_MIN, current + delta));
+    document.documentElement.style.fontSize = next + 'px';
+    document.getElementById('font-label').textContent = next + 'px';
+    localStorage.setItem('invntry-font', next);
+  }
+
+  // Restore saved preferences
+  (function() {
+    const savedTheme = localStorage.getItem('invntry-theme') || 'sandal';
+    const savedFont  = parseInt(localStorage.getItem('invntry-font')) || 14;
+    setTheme(savedTheme);
+    document.documentElement.style.fontSize = savedFont + 'px';
+    document.getElementById('font-label').textContent = savedFont + 'px';
+  })();
+
+  // Init
+  loadInventory();
+  loadDropdowns();
+  loadSuppliers();
+  loadCustomers();
+</script>
+</body>
+</html>

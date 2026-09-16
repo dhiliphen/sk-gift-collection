@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="sandal">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SK Gift Collection — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --mono: 'Space Mono', monospace; --sans: 'DM Sans', sans-serif; }
+
+  html[data-theme="sandal"] {
+    --bg: #f5ede8;
+    --surface: #fff8f5;
+    --surface2: #ede3dc;
+    --border: #d4bfb5;
+    --accent: #c4516a;
+    --accent-dim: rgba(196,81,106,0.12);
+    --warn: #c45c1a;
+    --text: #2d1f1a;
+    --text-muted: #9a7b72;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .login-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2.5rem 2rem;
+    width: 100%;
+    max-width: 360px;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-align: center;
+    margin-bottom: 0.25rem;
+  }
+
+  .logo span { color: var(--text-muted); }
+
+  .subtitle {
+    font-family: var(--mono);
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-align: center;
+    text-transform: uppercase;
+    margin-bottom: 2rem;
+  }
+
+  .form-group { margin-bottom: 1rem; }
+
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+  }
+
+  input {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input:focus { border-color: var(--accent); }
+
+  .error-msg {
+    background: rgba(196,81,106,0.1);
+    border: 1px solid rgba(196,81,106,0.4);
+    border-radius: 2px;
+    color: var(--accent);
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
+    font-family: var(--mono);
+  }
+
+  .btn-login {
+    width: 100%;
+    padding: 0.7rem;
+    background: var(--accent);
+    border: none;
+    border-radius: 2px;
+    color: #fff;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: opacity 0.2s;
+  }
+
+  .btn-login:hover { opacity: 0.88; }
+</style>
+</head>
+<body>
+<div class="login-card">
+  <div class="logo">SK<span>.</span>GIFT</div>
+  <div class="subtitle">Inventory Management</div>
+
+  {% if error %}
+  <div class="error-msg">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" action="/login">
+    <div class="form-group">
+      <label for="username">Username</label>
+      <input type="text" id="username" name="username" autocomplete="username" autofocus required>
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="btn-login">Sign In</button>
+  </form>
+</div>
+</body>
+</html>
