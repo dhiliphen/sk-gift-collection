@@ -762,6 +762,17 @@
   .modal-close:hover { color: var(--text); }
 
   .modal-body { padding: 1.5rem; }
+
+  .modal-section-label {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+    margin: 0.5rem 0 1rem;
+  }
   .modal-footer {
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--border);
@@ -1950,12 +1961,14 @@
 
 <!-- ADD ITEM MODAL -->
 <div class="modal-overlay" id="add-item-modal">
-  <div class="modal" style="width:560px; max-height:90vh; overflow-y:auto;">
+  <div class="modal" style="width:620px;">
     <div class="modal-header">
       <div class="modal-title" id="add-item-modal-title">Add New Item</div>
       <button class="modal-close" onclick="closeModal('add-item-modal')">×</button>
     </div>
     <div class="modal-body">
+
+      <!-- Basic Info -->
       <div class="form-group">
         <label>Product Name *</label>
         <input type="text" id="f-name" placeholder="e.g. USB-C Cable">
@@ -1970,16 +1983,19 @@
           <select id="f-unit"><option value="">— select —</option></select>
         </div>
       </div>
-      <div class="form-group">
-        <label>Supplier</label>
-        <input type="text" id="f-supplier" placeholder="Supplier name" list="suppliers-datalist">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Supplier</label>
+          <input type="text" id="f-supplier" placeholder="Supplier name" list="suppliers-datalist">
+        </div>
+        <div class="form-group">
+          <label>Opening Quantity</label>
+          <input type="number" id="f-quantity" placeholder="0" min="0">
+        </div>
       </div>
-      <div class="form-group">
-        <label>Opening Quantity</label>
-        <input type="number" id="f-quantity" placeholder="0" min="0">
-      </div>
-      <hr class="divider">
-      <div class="sidebar-title">Pricing</div>
+
+      <!-- Pricing -->
+      <div class="modal-section-label">Pricing</div>
       <div class="form-row">
         <div class="form-group">
           <label>Cost Price</label>
@@ -2000,6 +2016,9 @@
           <input type="number" id="f-selling" placeholder="0.00" min="0" step="0.01">
         </div>
       </div>
+
+      <!-- Tax & Alerts -->
+      <div class="modal-section-label">Tax &amp; Alerts</div>
       <div class="form-row">
         <div class="form-group">
           <label>HSN Code</label>
@@ -2016,10 +2035,14 @@
           </select>
         </div>
       </div>
-      <div class="form-group">
-        <label>Low Stock Alert (qty)</label>
-        <input type="number" id="f-threshold" placeholder="10" min="0">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Low Stock Alert (qty)</label>
+          <input type="number" id="f-threshold" placeholder="10" min="0">
+        </div>
+        <div class="form-group"></div>
       </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('add-item-modal')">Cancel</button>
