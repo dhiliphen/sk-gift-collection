@@ -203,71 +203,114 @@
     z-index: 1;
   }
 
-  /* NAV DROPDOWN GROUP */
-  .nav-group {
-    position: relative;
-    display: inline-flex;
-    margin-left: -1px;
+  /* DASHBOARD */
+  .dashboard-page {
+    padding: 2.5rem 2rem;
+    max-width: 900px;
+    margin: 0 auto;
   }
 
-  .nav-group-btn {
+  .dashboard-heading {
+    font-family: var(--mono);
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+  }
+
+  .dashboard-subheading {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+  }
+
+  .dashboard-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+  }
+
+  .dash-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.75rem;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .dash-card:hover {
+    border-color: var(--accent);
+    box-shadow: 0 2px 12px var(--accent-dim);
+  }
+
+  .dash-card.primary {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+  }
+
+  .dash-card-label {
     font-family: var(--mono);
     font-size: 0.7rem;
     letter-spacing: 2px;
     text-transform: uppercase;
-    padding: 0.5rem 1.25rem;
-    background: transparent;
-    border: 1px solid var(--border);
     color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
+    margin-bottom: 0.5rem;
   }
 
-  .nav-group-btn:hover, .nav-group-btn.active {
-    background: var(--accent-dim);
-    border-color: var(--accent);
-    color: var(--accent);
-    z-index: 1;
+  .dash-card.primary .dash-card-label { color: var(--accent); }
+
+  .dash-card-desc {
+    font-size: 0.95rem;
+    color: var(--text);
+    margin-bottom: 1.25rem;
+    line-height: 1.5;
   }
 
-  .nav-dropdown {
-    display: none;
-    position: absolute;
-    top: calc(100% + 1px);
-    left: 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 0 0 4px 4px;
-    z-index: 300;
-    min-width: 160px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  }
-
-  .nav-group.open .nav-dropdown { display: block; }
-
-  .nav-dropdown button {
-    display: block;
-    width: 100%;
-    text-align: left;
+  .dash-card-link {
     font-family: var(--mono);
-    font-size: 0.65rem;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    padding: 0.7rem 1rem;
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: all 0.15s;
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    color: var(--accent);
   }
 
-  .nav-dropdown button:last-child { border-bottom: none; }
+  /* SETTINGS */
+  .settings-page {
+    padding: 1.5rem 2rem;
+    overflow-y: auto;
+    height: calc(100vh - 197px);
+  }
 
-  .nav-dropdown button:hover, .nav-dropdown button.active {
-    background: var(--accent-dim);
-    color: var(--accent);
+  .settings-heading {
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+  }
+
+  .settings-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    align-items: start;
+  }
+
+  .settings-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .settings-section-title {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
   }
 
   /* STATS BAR */
@@ -1073,25 +1116,13 @@
 <header>
   <div class="logo">SK GIFT<span> COLLECTION</span></div>
   <div class="nav-tabs">
-    <button class="nav-tab active" id="tab-inventory" onclick="switchView('inventory')">Inventory</button>
-
-    <div class="nav-group" id="group-masters">
-      <button class="nav-group-btn" id="group-btn-masters" onclick="toggleNavGroup('masters')">Masters ▾</button>
-      <div class="nav-dropdown" id="dropdown-masters">
-        <button id="tab-suppliers"  onclick="switchView('suppliers');  closeNavGroups()">Suppliers</button>
-        <button id="tab-categories" onclick="switchView('categories'); closeNavGroups()">Categories</button>
-        <button id="tab-units"      onclick="switchView('units');      closeNavGroups()">Units</button>
-        <button id="tab-customers"  onclick="switchView('customers');  closeNavGroups()">Customers</button>
-      </div>
-    </div>
-
-    <div class="nav-group" id="group-transactions">
-      <button class="nav-group-btn" id="group-btn-transactions" onclick="toggleNavGroup('transactions')">Transactions ▾</button>
-      <div class="nav-dropdown" id="dropdown-transactions">
-        <button id="tab-purchases" onclick="switchView('purchases'); closeNavGroups()">Purchases</button>
-        <button id="tab-billing"   onclick="switchView('billing');   closeNavGroups()">Billing</button>
-      </div>
-    </div>
+    <button class="nav-tab active" id="tab-dashboard"  onclick="switchView('dashboard')">Dashboard</button>
+    <button class="nav-tab" id="tab-inventory"  onclick="switchView('inventory')">Inventory</button>
+    <button class="nav-tab" id="tab-billing"    onclick="switchView('billing')">Sales Bills</button>
+    <button class="nav-tab" id="tab-purchases"  onclick="switchView('purchases')">Purchases</button>
+    <button class="nav-tab" id="tab-customers"  onclick="switchView('customers')">Customers</button>
+    <button class="nav-tab" id="tab-suppliers"  onclick="switchView('suppliers')">Suppliers</button>
+    <button class="nav-tab" id="tab-settings"   onclick="switchView('settings')">Settings</button>
   </div>
   <div class="header-actions">
     <div class="font-controls">
@@ -1112,33 +1143,6 @@
   </div>
 </header>
 
-<!-- FLOW DIAGRAM -->
-<div class="flow-diagram">
-  <div class="flow-step" id="flow-suppliers" onclick="switchView('suppliers')" title="Manage your suppliers">
-    <span class="flow-step-icon">🏭</span>
-    <span class="flow-step-label">Supplier</span>
-  </div>
-  <span class="flow-arrow">→</span>
-  <div class="flow-step" id="flow-purchases" onclick="switchView('purchases')" title="Record goods received">
-    <span class="flow-step-icon">📥</span>
-    <span class="flow-step-label">Purchase Bill</span>
-  </div>
-  <span class="flow-arrow">→</span>
-  <div class="flow-step active-step" id="flow-inventory" onclick="switchView('inventory')" title="View stock levels">
-    <span class="flow-step-icon">📦</span>
-    <span class="flow-step-label">Inventory</span>
-  </div>
-  <span class="flow-arrow">→</span>
-  <div class="flow-step" id="flow-billing" onclick="switchView('billing')" title="Create selling bills">
-    <span class="flow-step-icon">🧾</span>
-    <span class="flow-step-label">Sales Bill</span>
-  </div>
-  <span class="flow-arrow">→</span>
-  <div class="flow-step" id="flow-customers" onclick="switchView('customers')" title="Manage customers">
-    <span class="flow-step-icon">👤</span>
-    <span class="flow-step-label">Customer</span>
-  </div>
-</div>
 
 <div class="stats-bar">
   <div class="stat-card">
@@ -1159,7 +1163,37 @@
   </div>
 </div>
 
-<div id="view-inventory" class="view active">
+<!-- DASHBOARD VIEW -->
+<div id="view-dashboard" class="view active">
+  <div class="dashboard-page">
+    <div class="dashboard-heading">SK GIFT COLLECTION</div>
+    <div class="dashboard-subheading">Welcome back. What would you like to do today?</div>
+    <div class="dashboard-cards">
+      <div class="dash-card" onclick="switchView('inventory')">
+        <div class="dash-card-label">Inventory</div>
+        <div class="dash-card-desc">View stock levels, add new products and update prices.</div>
+        <div class="dash-card-link">Manage Inventory →</div>
+      </div>
+      <div class="dash-card primary" onclick="switchView('billing')">
+        <div class="dash-card-label">New Sale</div>
+        <div class="dash-card-desc">Create a new bill and record a sale for a customer.</div>
+        <div class="dash-card-link">Create New Bill →</div>
+      </div>
+      <div class="dash-card" onclick="switchView('purchases')">
+        <div class="dash-card-label">Purchases</div>
+        <div class="dash-card-desc">Record goods received from your suppliers.</div>
+        <div class="dash-card-link">Record Purchase →</div>
+      </div>
+      <div class="dash-card" onclick="switchView('customers')">
+        <div class="dash-card-label">Customers</div>
+        <div class="dash-card-desc">View and manage your customer list.</div>
+        <div class="dash-card-link">View Customers →</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="view-inventory" class="view">
 <div class="layout">
   <!-- SIDEBAR: Add Item Form -->
   <aside class="sidebar">
@@ -1312,51 +1346,42 @@
   </div>
 </div><!-- end view-suppliers -->
 
-<!-- CATEGORIES VIEW -->
-<div id="view-categories" class="view">
-  <div class="suppliers-page">
-    <div class="page-header">
-      <div class="page-title">Categories</div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Name</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="categories-table">
-          <tr><td colspan="3"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading categories...</div></div></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div><!-- end view-categories -->
-
-<!-- UNITS VIEW -->
-<div id="view-units" class="view">
-  <div class="suppliers-page">
-    <div class="page-header">
-      <div class="page-title">Units</div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Name</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody id="units-table">
-          <tr><td colspan="3"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading units...</div></div></td></tr>
-        </tbody>
-      </table>
+<!-- SETTINGS VIEW -->
+<div id="view-settings" class="view">
+  <div class="settings-page">
+    <div class="settings-heading">Settings</div>
+    <div class="settings-grid">
+      <div>
+        <div class="settings-section-header">
+          <div class="settings-section-title">Categories</div>
+          <button class="btn btn-primary" onclick="document.getElementById('add-category-modal').classList.add('active')">+ Add</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Name</th><th>Actions</th></tr></thead>
+            <tbody id="categories-table">
+              <tr><td colspan="3"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading...</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="settings-section-header">
+          <div class="settings-section-title">Units</div>
+          <button class="btn btn-primary" onclick="document.getElementById('add-unit-modal').classList.add('active')">+ Add</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Name</th><th>Actions</th></tr></thead>
+            <tbody id="units-table">
+              <tr><td colspan="3"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading...</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
-</div><!-- end view-units -->
+</div><!-- end view-settings -->
 
 <!-- CUSTOMERS VIEW -->
 <div id="view-customers" class="view">
@@ -2120,7 +2145,7 @@
 
   // ── Edit Modal ──────────────────────────────────────────
   function openAddModal() {
-    document.querySelector('.sidebar').scrollIntoView({ behavior: 'smooth' });
+    document.querySelector('.sidebar') && document.querySelector('.sidebar').scrollIntoView({ behavior: 'smooth' });
     document.getElementById('f-name').focus();
   }
 
@@ -2257,35 +2282,12 @@
   });
 
   // ── View Switching ───────────────────────────────────────
-  let currentView = 'inventory';
-  const views = ['inventory', 'suppliers', 'categories', 'units', 'customers', 'purchases', 'billing'];
-  const newLabels = { inventory: '+ NEW ITEM', suppliers: '+ NEW SUPPLIER', categories: '+ NEW CATEGORY', units: '+ NEW UNIT', customers: '+ NEW CUSTOMER', purchases: '+ NEW PURCHASE', billing: '+ NEW BILL' };
-  const addModals = { suppliers: 'add-supplier-modal', categories: 'add-category-modal', units: 'add-unit-modal', customers: 'add-customer-modal', purchases: 'create-purchase-modal', billing: 'create-bill-modal' };
-  const loaders = { suppliers: loadSuppliers, categories: loadCategories, units: loadUnits, customers: loadCustomers, purchases: loadPurchases, billing: loadBills };
+  let currentView = 'dashboard';
+  const views = ['dashboard', 'inventory', 'suppliers', 'customers', 'purchases', 'billing', 'settings'];
+  const newLabels = { inventory: '+ NEW ITEM', suppliers: '+ NEW SUPPLIER', customers: '+ NEW CUSTOMER', purchases: '+ NEW PURCHASE', billing: '+ NEW BILL' };
+  const addModals = { suppliers: 'add-supplier-modal', customers: 'add-customer-modal' };
+  const loaders = { suppliers: loadSuppliers, customers: loadCustomers, purchases: loadPurchases, billing: loadBills, settings: () => { loadCategories(); loadUnits(); } };
 
-  // ── Nav group dropdowns ──────────────────────────────────
-  const mastersViews      = ['suppliers', 'categories', 'units', 'customers'];
-  const transactionViews  = ['purchases', 'billing'];
-
-  function toggleNavGroup(group) {
-    const el = document.getElementById('group-' + group);
-    const isOpen = el.classList.contains('open');
-    closeNavGroups();
-    if (!isOpen) el.classList.add('open');
-  }
-
-  function closeNavGroups() {
-    document.querySelectorAll('.nav-group').forEach(g => g.classList.remove('open'));
-  }
-
-  // Close dropdowns when clicking outside
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.nav-group') && !e.target.closest('.nav-group-btn')) {
-      closeNavGroups();
-    }
-  });
-
-  const flowSteps = ['suppliers', 'purchases', 'inventory', 'billing', 'customers'];
   function switchView(view) {
     currentView = view;
     views.forEach(v => {
@@ -2293,17 +2295,13 @@
       const tab = document.getElementById('tab-' + v);
       if (tab) tab.classList.toggle('active', v === view);
     });
-    // Update group button active state
-    const inMasters     = mastersViews.includes(view);
-    const inTransaction = transactionViews.includes(view);
-    document.getElementById('group-btn-masters').classList.toggle('active', inMasters);
-    document.getElementById('group-btn-transactions').classList.toggle('active', inTransaction);
-    // Highlight flow step
-    flowSteps.forEach(s => {
-      const el = document.getElementById('flow-' + s);
-      if (el) el.classList.toggle('active-step', s === view);
-    });
-    document.getElementById('btn-new').textContent = newLabels[view];
+    const btnNew = document.getElementById('btn-new');
+    if (newLabels[view]) {
+      btnNew.textContent = newLabels[view];
+      btnNew.style.display = '';
+    } else {
+      btnNew.style.display = 'none';
+    }
     if (loaders[view]) loaders[view]();
   }
 
@@ -2311,7 +2309,7 @@
     if (currentView === 'inventory') openAddModal();
     else if (currentView === 'billing') openCreateBill();
     else if (currentView === 'purchases') openCreatePurchase();
-    else document.getElementById(addModals[currentView]).classList.add('active');
+    else if (addModals[currentView]) document.getElementById(addModals[currentView]).classList.add('active');
   }
 
   // ── Suppliers CRUD ───────────────────────────────────────
