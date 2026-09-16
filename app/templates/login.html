@@ -15,9 +15,20 @@
     --border: #d4bfb5;
     --accent: #c4516a;
     --accent-dim: rgba(196,81,106,0.12);
-    --warn: #c45c1a;
     --text: #2d1f1a;
-    --text-muted: #9a7b72;
+    --text-muted: #6b4f45;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html[data-theme="sandal"] {
+      --bg: #0d0f0f;
+      --surface: #141718;
+      --surface2: #1c1f20;
+      --border: #2a2d2e;
+      --accent: #00e5a0;
+      --text: #ffffff;
+      --text-muted: #a0a8ab;
+    }
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
