@@ -1,7 +1,25 @@
-from fastapi import APIRouter, HTTPException, Depends
+import os
+from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas
+from app.utils import amount_in_words
+
+_base = os.environ.get('BASE_DIR', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_templates = Jinja2Templates(directory=os.path.join(_base, "app", "templates"))
+
+_COMPANY = {
+    "name":    os.environ.get("COMPANY_NAME",    "SK Gift Collection"),
+    "line2":   os.environ.get("COMPANY_LINE2",   "Dealers in Divam Agarbathi"),
+    "address": os.environ.get("COMPANY_ADDRESS", "Shop No. 21, Behind Kamaraj School, Gandhi Nagar, Dharavi, Mumbai - 400017"),
+    "state":   os.environ.get("COMPANY_STATE",   "Maharashtra"),
+    "pin":     os.environ.get("COMPANY_PIN",     "400017"),
+    "phone":   os.environ.get("COMPANY_PHONE",   "9820 76 9225"),
+    "email":   os.environ.get("COMPANY_EMAIL",   ""),
+    "gstin":   os.environ.get("COMPANY_GSTIN",   ""),
+}
 
 router = APIRouter(prefix="/api/bills", tags=["billing"])
 
@@ -71,6 +89,7 @@ def create_bill(bill: schemas.BillCreate, db: Session = Depends(get_db)):
             item_id=item.id,
             item_name=item.name,
             hsn_code=item.hsn_code,
+            unit=item.unit,
             quantity=line.quantity,
             unit_price=line.unit_price,
             gst_rate=gst_rate,
@@ -105,3 +124,37 @@ def cancel_bill(bill_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(bill)
     return bill
+
+
+@router.get("/{bill_id}/print", response_class=HTMLResponse)
+def print_bill(bill_id: int, request: Request, db: Session = Depends(get_db)):
+    bill = db.query(models.Bill).filter(models.Bill.id == bill_id).first()
+    if not bill:
+        raise HTTPException(status_code=404, detail="Bill not found")
+
+    # Build per-HSN tax summary rows
+    hsn_map = {}
+    for line in bill.items:
+        key = (line.hsn_code or '', line.gst_rate or 0.0)
+        if key not in hsn_map:
+            hsn_map[key] = {"hsn": line.hsn_code or '', "gst_rate": line.gst_rate or 0.0, "taxable": 0.0}
+        hsn_map[key]["taxable"] += line.taxable_amount
+
+    tax_rows = []
+    for (hsn, gst_rate), row in hsn_map.items():
+        half = round(row["taxable"] * gst_rate / 100 / 2, 2)
+        tax_rows.append({
+            "hsn": hsn, "gst_rate": gst_rate,
+            "taxable": round(row["taxable"], 2),
+            "cgst": half, "sgst": half,
+            "total_tax": round(half * 2, 2),
+        })
+
+    return _templates.TemplateResponse("print_invoice.html", {
+        "request":      request,
+        "bill":         bill,
+        "company":      _COMPANY,
+        "amount_words": amount_in_words(bill.total_amount),
+        "tax_words":    amount_in_words(bill.igst_amount),
+        "tax_rows":     tax_rows,
+    })

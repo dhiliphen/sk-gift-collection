@@ -25,6 +25,7 @@ class PurchaseBillItem(Base):
     bill_id = Column(Integer, ForeignKey("purchase_bills.id"), nullable=False)
     item_id = Column(Integer, nullable=True)
     item_name = Column(String(100), nullable=False)
+    unit = Column(String(20), nullable=True)
     quantity = Column(Integer, nullable=False)
     unit_cost = Column(Float, nullable=False)
     line_total = Column(Float, nullable=False)
@@ -70,6 +71,7 @@ class BillItem(Base):
     item_id = Column(Integer, nullable=True)   # snapshot; item may be deleted later
     item_name = Column(String(100), nullable=False)
     hsn_code = Column(String(20), nullable=True)
+    unit = Column(String(20), nullable=True)
     quantity = Column(Integer, nullable=False)
     unit_price = Column(Float, nullable=False)
     gst_rate = Column(Float, default=0.0)

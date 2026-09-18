@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Purchase {{ purchase.purchase_number }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 11px; color: #000; background: #fff; }
+
+  .page { width: 210mm; min-height: 297mm; margin: 0 auto; padding: 8mm; }
+
+  .invoice-title {
+    text-align: center;
+    font-size: 15px;
+    font-weight: bold;
+    background: #d5e8c4;
+    padding: 5px;
+    border: 1px solid #999;
+    border-bottom: none;
+    letter-spacing: 1px;
+  }
+
+  .header-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid #999;
+  }
+  .header-left { padding: 6px 8px; border-right: 1px solid #999; }
+  .header-right { padding: 0; }
+  .company-name { font-size: 13px; font-weight: bold; }
+  .company-line2 { font-size: 11px; color: #333; margin-bottom: 3px; }
+  .company-detail { font-size: 10px; color: #333; line-height: 1.6; }
+
+  .detail-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid #999;
+    min-height: 20px;
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-cell {
+    padding: 3px 6px;
+    font-size: 10px;
+    border-right: 1px solid #999;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .detail-cell:last-child { border-right: none; }
+  .detail-label { color: #555; white-space: nowrap; }
+  .detail-value { font-weight: bold; }
+
+  .party-block {
+    border: 1px solid #999;
+    border-top: none;
+    padding: 5px 8px;
+  }
+  .party-heading { font-size: 10px; font-weight: bold; text-decoration: underline; margin-bottom: 3px; }
+  .party-name { font-size: 12px; font-weight: bold; }
+
+  table.items {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #999;
+    border-top: none;
+    font-size: 10.5px;
+  }
+  table.items th {
+    background: #e8f5d5;
+    border: 1px solid #999;
+    padding: 4px 5px;
+    text-align: center;
+    font-weight: bold;
+    font-size: 10px;
+  }
+  table.items td {
+    border: 1px solid #ccc;
+    padding: 3px 5px;
+    vertical-align: middle;
+  }
+  .col-sl   { width: 28px; text-align: center; }
+  .col-desc { text-align: left; }
+  .col-qty  { width: 52px; text-align: center; }
+  .col-rate { width: 72px; text-align: right; }
+  .col-per  { width: 36px; text-align: center; }
+  .col-amt  { width: 80px; text-align: right; }
+
+  tr.total-row td { background: #e8f5d5; font-weight: bold; }
+  tr.blank-row td { height: 18px; }
+
+  .amount-words {
+    border: 1px solid #999;
+    border-top: none;
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+  .amount-words span { font-weight: bold; }
+
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border: 1px solid #999;
+    border-top: none;
+    min-height: 60px;
+  }
+  .footer-left { padding: 6px 8px; border-right: 1px solid #999; font-size: 10px; }
+  .footer-right { padding: 6px 8px; font-size: 10px; text-align: right; }
+  .signature-label { margin-top: 28px; font-weight: bold; font-size: 10px; }
+
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .no-print { display: none; }
+    .page { margin: 0; padding: 8mm; }
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print" style="padding:10px; background:#f0f0f0; text-align:center;">
+  <button onclick="window.print()" style="padding:8px 24px; font-size:13px; cursor:pointer; background:#3a7d44; color:#fff; border:none; border-radius:3px;">🖨 Print / Save as PDF</button>
+</div>
+
+<div class="page">
+
+  <div class="invoice-title">Purchase Bill</div>
+
+  <div class="header-grid">
+    <div class="header-left">
+      <div class="company-name">{{ company.name }}</div>
+      {% if company.line2 %}<div class="company-line2">{{ company.line2 }}</div>{% endif %}
+      <div class="company-detail">
+        {{ company.address }}<br>
+        {% if company.gstin %}<b>GSTIN:</b> {{ company.gstin }}<br>{% endif %}
+        <b>State:</b> {{ company.state }}&nbsp;&nbsp;&nbsp;<b>Pin:</b> {{ company.pin }}<br>
+        <b>Contact:</b> {{ company.phone }}
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="detail-row">
+        <div class="detail-cell"><span class="detail-label">Purchase No.</span><span class="detail-value">{{ purchase.purchase_number }}</span></div>
+        <div class="detail-cell"><span class="detail-label">Dated</span><span class="detail-value">{{ purchase.created_at.strftime('%d-%b-%Y') }}</span></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-cell" style="grid-column:span 2">
+          <span class="detail-label">Supplier Invoice Ref.</span>
+          <span class="detail-value">{{ purchase.supplier_invoice or '—' }}</span>
+        </div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-cell"><span class="detail-label">Mode of Payment</span></div>
+        <div class="detail-cell"><span class="detail-label">Terms of Payment</span></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-cell"><span class="detail-label">Delivery Note</span></div>
+        <div class="detail-cell"><span class="detail-label">Delivery Note Date</span></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-cell"><span class="detail-label">Despatched through</span></div>
+        <div class="detail-cell"><span class="detail-label">Destination</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="party-block">
+    <div class="party-heading">Supplier</div>
+    <div class="party-name">{{ purchase.supplier_name }}</div>
+  </div>
+
+  <table class="items">
+    <thead>
+      <tr>
+        <th class="col-sl">Sl.<br>No.</th>
+        <th class="col-desc">Description of Goods</th>
+        <th class="col-qty">Quantity</th>
+        <th class="col-rate">Rate</th>
+        <th class="col-per">per</th>
+        <th class="col-amt">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in purchase.items %}
+      <tr>
+        <td class="col-sl">{{ loop.index }}</td>
+        <td class="col-desc">{{ item.item_name }}</td>
+        <td class="col-qty">{{ item.quantity }}</td>
+        <td class="col-rate">{{ "%.2f"|format(item.unit_cost) }}</td>
+        <td class="col-per">{{ item.unit or 'Pcs' }}</td>
+        <td class="col-amt">{{ "%.2f"|format(item.line_total) }}</td>
+      </tr>
+      {% endfor %}
+      {% for i in range([5 - purchase.items|length, 0]|max) %}
+      <tr class="blank-row"><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+      {% endfor %}
+      <tr class="total-row">
+        <td></td><td style="text-align:right;">Total</td>
+        <td class="col-qty"></td>
+        <td></td><td></td>
+        <td class="col-amt">₹ {{ "%.2f"|format(purchase.total_amount) }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="amount-words">
+    Amount Chargeable (in words) : <span>INR {{ amount_words }}</span>
+  </div>
+
+  <div class="footer-grid">
+    <div class="footer-left">
+      <div><b>Received in good condition.</b></div>
+      <div class="signature-label">Receiver's Signature</div>
+    </div>
+    <div class="footer-right">
+      for <b>{{ company.name }}</b>
+      <div class="signature-label">Authorised Signatory</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1525,6 +1525,7 @@
     <div class="modal-body" id="view-pur-body"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('view-purchase-modal')">Close</button>
+      <button class="btn btn-stock" onclick="printPurchase()">PRINT</button>
       <button class="btn btn-warn" id="cancel-pur-btn" onclick="cancelCurrentPurchase()">CANCEL PURCHASE</button>
     </div>
   </div>
@@ -2991,6 +2992,16 @@
 
   // ── Print Bill ───────────────────────────────────────────
   function printBill() {
+    if (!viewingBillId) return;
+    window.open(`/api/bills/${viewingBillId}/print`, '_blank');
+  }
+
+  function printPurchase() {
+    if (!currentPurchaseId) return;
+    window.open(`/api/purchases/${currentPurchaseId}/print`, '_blank');
+  }
+
+  function _printBill_old() {
     if (!viewingBillId) return;
     const bill = allBills.find(b => b.id === viewingBillId);
     if (!bill) return;

@@ -19,6 +19,7 @@ class PurchaseItemResponse(BaseModel):
     id: int
     item_id: Optional[int]
     item_name: str
+    unit: Optional[str]
     quantity: int
     unit_cost: float
     line_total: float
@@ -89,6 +90,7 @@ class BillItemResponse(BaseModel):
     item_id: Optional[int]
     item_name: str
     hsn_code: Optional[str]
+    unit: Optional[str]
     quantity: int
     unit_price: float
     gst_rate: float

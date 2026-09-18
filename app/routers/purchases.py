@@ -1,7 +1,25 @@
-from fastapi import APIRouter, HTTPException, Depends
+import os
+from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import models, schemas
+from app.utils import amount_in_words
+
+_base = os.environ.get('BASE_DIR', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_templates = Jinja2Templates(directory=os.path.join(_base, "app", "templates"))
+
+_COMPANY = {
+    "name":    os.environ.get("COMPANY_NAME",    "SK Gift Collection"),
+    "line2":   os.environ.get("COMPANY_LINE2",   "Dealers in Divam Agarbathi"),
+    "address": os.environ.get("COMPANY_ADDRESS", "Shop No. 21, Behind Kamaraj School, Gandhi Nagar, Dharavi, Mumbai - 400017"),
+    "state":   os.environ.get("COMPANY_STATE",   "Maharashtra"),
+    "pin":     os.environ.get("COMPANY_PIN",     "400017"),
+    "phone":   os.environ.get("COMPANY_PHONE",   "9820 76 9225"),
+    "email":   os.environ.get("COMPANY_EMAIL",   ""),
+    "gstin":   os.environ.get("COMPANY_GSTIN",   ""),
+}
 
 router = APIRouter(prefix="/api/purchases", tags=["purchases"])
 
@@ -55,6 +73,7 @@ def create_purchase(purchase: schemas.PurchaseCreate, db: Session = Depends(get_
             bill_id=db_bill.id,
             item_id=item.id,
             item_name=item.name,
+            unit=item.unit,
             quantity=line.quantity,
             unit_cost=line.unit_cost,
             line_total=line_total,
@@ -85,3 +104,17 @@ def cancel_purchase(purchase_id: int, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(pb)
     return pb
+
+
+@router.get("/{purchase_id}/print", response_class=HTMLResponse)
+def print_purchase(purchase_id: int, request: Request, db: Session = Depends(get_db)):
+    pb = db.query(models.PurchaseBill).filter(models.PurchaseBill.id == purchase_id).first()
+    if not pb:
+        raise HTTPException(status_code=404, detail="Purchase bill not found")
+
+    return _templates.TemplateResponse("print_purchase.html", {
+        "request":      request,
+        "purchase":     pb,
+        "company":      _COMPANY,
+        "amount_words": amount_in_words(pb.total_amount),
+    })
