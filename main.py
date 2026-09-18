@@ -36,11 +36,16 @@ with engine.connect() as conn:
 _base = os.environ.get('BASE_DIR', os.path.dirname(os.path.abspath(__file__)))
 
 _PUBLIC_PATHS = ("/login", "/static", "/favicon.ico")
+_INTERNAL_KEY = os.environ.get("INTERNAL_API_KEY", "")
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if any(request.url.path.startswith(p) for p in _PUBLIC_PATHS):
             return await call_next(request)
+        # Allow internal service calls via API key
+        if _INTERNAL_KEY and request.url.path.startswith("/api/"):
+            if request.headers.get("X-Internal-Key") == _INTERNAL_KEY:
+                return await call_next(request)
         token = request.cookies.get("session")
         if not is_valid_session(token or ""):
             return RedirectResponse(url="/login")
