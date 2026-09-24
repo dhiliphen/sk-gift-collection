@@ -127,3 +127,45 @@ def test_delete_supplier(client, sample_supplier):
 def test_delete_supplier_not_found(client):
     response = client.delete("/api/suppliers/999", headers=AUTH_HEADERS)
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Phase 8 — Extended supplier tests
+# ---------------------------------------------------------------------------
+
+def test_create_supplier_empty_name_rejected(client):
+    response = client.post("/api/suppliers", json={"name": ""}, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_update_supplier_db_state(client, db, sample_supplier):
+    """Verify DB state after supplier update."""
+    client.put(
+        f"/api/suppliers/{sample_supplier.id}",
+        json={"contact_person": "Jane"},
+        headers=AUTH_HEADERS,
+    )
+    db.refresh(sample_supplier)
+    assert sample_supplier.contact_person == "Jane"
+
+
+def test_delete_supplier_db_state(client, db, sample_supplier):
+    sid = sample_supplier.id
+    client.delete(f"/api/suppliers/{sid}", headers=AUTH_HEADERS)
+    from app.models import Supplier
+    assert db.query(Supplier).filter(Supplier.id == sid).first() is None
+
+
+def test_create_supplier_all_fields(client):
+    payload = {
+        "name": "Full Supplier",
+        "contact_person": "Bob",
+        "phone": "1234567890",
+        "email": "bob@supply.com",
+        "address": "456 Road",
+    }
+    response = client.post("/api/suppliers", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["contact_person"] == "Bob"
+    assert data["email"] == "bob@supply.com"

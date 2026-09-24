@@ -10,7 +10,7 @@ from app.repositories.item import ItemRepository
 from app.services.bill import BillService
 from app.utils import amount_in_words
 
-_base = os.environ.get('BASE_DIR', os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_base = os.environ.get('BASE_DIR', os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 _templates = Jinja2Templates(directory=os.path.join(_base, "app", "templates"))
 
 _COMPANY = {

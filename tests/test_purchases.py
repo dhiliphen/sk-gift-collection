@@ -211,3 +211,181 @@ def test_cancel_purchase_already_cancelled(client, sample_item):
 def test_cancel_purchase_not_found(client):
     response = client.patch("/api/purchases/999/cancel", headers=AUTH_HEADERS)
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Phase 5 — Extended purchase tests
+# ---------------------------------------------------------------------------
+
+def test_purchase_atomicity_invalid_item(client, db):
+    """If one item_id is invalid, NO stock should be modified."""
+    item = models.Item(name="PAtomValid", quantity=10, cost_price=10.0,
+                       selling_price=20.0, gst_rate=0.0, unit="pcs")
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+
+    payload = {
+        "supplier_name": "Atom Supplier",
+        "items": [
+            {"item_id": item.id, "quantity": 5, "unit_cost": 10.0},
+            {"item_id": 99999, "quantity": 3, "unit_cost": 15.0},
+        ],
+    }
+    response = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 404
+
+    db.refresh(item)
+    assert item.quantity == 10  # unchanged
+
+
+def test_purchase_negative_quantity_rejected(client, sample_item):
+    """Quantity must be gt=0."""
+    payload = _purchase_payload(sample_item.id, quantity=-5)
+    response = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_purchase_zero_quantity_rejected(client, sample_item):
+    """Quantity must be gt=0, so 0 is rejected."""
+    payload = _purchase_payload(sample_item.id, quantity=0)
+    response = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_purchase_negative_unit_cost_rejected(client, sample_item):
+    """Unit cost ge=0, so negative is rejected."""
+    payload = _purchase_payload(sample_item.id, unit_cost=-10.0)
+    response = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_purchase_zero_unit_cost_allowed(client, sample_item):
+    """Zero unit_cost should be allowed (ge=0)."""
+    payload = _purchase_payload(sample_item.id, quantity=5, unit_cost=0.0)
+    response = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 201
+    assert response.json()["total_amount"] == 0.0
+
+
+def test_purchase_empty_supplier_name_rejected(client, sample_item):
+    """Supplier name must be min_length=1."""
+    payload = {"supplier_name": "", "items": [{"item_id": sample_item.id, "quantity": 1, "unit_cost": 10.0}]}
+    response = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_purchase_supplier_invoice_optional(client, sample_item):
+    """Supplier invoice is optional."""
+    payload = {
+        "supplier_name": "NoInvoice",
+        "items": [{"item_id": sample_item.id, "quantity": 2, "unit_cost": 10.0}],
+    }
+    response = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 201
+    assert response.json()["supplier_invoice"] is None
+
+
+def test_purchase_db_state_after_create(client, db, sample_item):
+    """Verify DB state after purchase creation."""
+    orig_qty = sample_item.quantity
+    payload = _purchase_payload(sample_item.id, quantity=25, unit_cost=10.0)
+    response = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    purchase_id = response.json()["id"]
+
+    pb = db.query(models.PurchaseBill).filter(models.PurchaseBill.id == purchase_id).first()
+    assert pb is not None
+    assert pb.status == "received"
+    assert len(pb.items) == 1
+
+    db.refresh(sample_item)
+    assert sample_item.quantity == orig_qty + 25
+
+
+def test_purchase_cancel_after_stock_sold(client, db, sample_item):
+    """
+    AMBIGUOUS: If purchased stock has been sold, cancellation floors stock at 0.
+    Current behaviour: max(0, qty - purchased_qty). Documents this for confirmation.
+    """
+    # Purchase 50 units
+    payload = _purchase_payload(sample_item.id, quantity=50, unit_cost=10.0)
+    resp = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    purchase_id = resp.json()["id"]
+
+    # Simulate selling all stock
+    db.refresh(sample_item)
+    sample_item.quantity = 0
+    db.commit()
+
+    # Cancel the purchase -- should not go negative
+    cancel_resp = client.patch(f"/api/purchases/{purchase_id}/cancel", headers=AUTH_HEADERS)
+    assert cancel_resp.status_code == 200
+
+    db.refresh(sample_item)
+    assert sample_item.quantity == 0  # floored at 0, not -50
+
+
+def test_purchase_line_total_calculation(client, sample_item):
+    """Line total = quantity * unit_cost."""
+    payload = _purchase_payload(sample_item.id, quantity=7, unit_cost=13.33)
+    response = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["items"][0]["line_total"] == round(7 * 13.33, 2)
+
+
+def test_purchase_multi_item_stock_added(client, db, sample_item, sample_item_b):
+    """All items in a multi-item purchase get stock added."""
+    orig_a = sample_item.quantity
+    orig_b = sample_item_b.quantity
+
+    payload = {
+        "supplier_name": "Multi",
+        "items": [
+            {"item_id": sample_item.id, "quantity": 10, "unit_cost": 5.0},
+            {"item_id": sample_item_b.id, "quantity": 20, "unit_cost": 3.0},
+        ],
+    }
+    client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+
+    db.refresh(sample_item)
+    db.refresh(sample_item_b)
+    assert sample_item.quantity == orig_a + 10
+    assert sample_item_b.quantity == orig_b + 20
+
+
+def test_purchase_cancel_multi_item(client, db, sample_item, sample_item_b):
+    """Cancel multi-item purchase restores stock for all items."""
+    orig_a = sample_item.quantity
+    orig_b = sample_item_b.quantity
+
+    payload = {
+        "supplier_name": "MultiCancel",
+        "items": [
+            {"item_id": sample_item.id, "quantity": 10, "unit_cost": 5.0},
+            {"item_id": sample_item_b.id, "quantity": 20, "unit_cost": 3.0},
+        ],
+    }
+    resp = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
+    purchase_id = resp.json()["id"]
+
+    client.patch(f"/api/purchases/{purchase_id}/cancel", headers=AUTH_HEADERS)
+
+    db.refresh(sample_item)
+    db.refresh(sample_item_b)
+    assert sample_item.quantity == orig_a
+    assert sample_item_b.quantity == orig_b
+
+
+def test_purchase_print_endpoint(client, sample_item):
+    """Print endpoint returns HTML 200."""
+    resp = client.post(
+        "/api/purchases",
+        json=_purchase_payload(sample_item.id, quantity=5),
+        headers=AUTH_HEADERS,
+    )
+    purchase_id = resp.json()["id"]
+
+    print_resp = client.get(f"/api/purchases/{purchase_id}/print", headers=AUTH_HEADERS)
+    assert print_resp.status_code == 200
+    assert "text/html" in print_resp.headers.get("content-type", "")

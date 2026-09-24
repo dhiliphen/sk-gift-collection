@@ -134,3 +134,48 @@ def test_categories_ordered_by_name(client, db):
     names = [c["name"] for c in response.json()]
     assert names == sorted(names)
     assert names[0] == "Apple"
+
+
+# ---------------------------------------------------------------------------
+# Phase 9 — Extended category tests
+# ---------------------------------------------------------------------------
+
+def test_create_category_max_length(client):
+    """Category name max_length=50; exceeding should fail."""
+    long_name = "A" * 51
+    response = client.post("/api/categories", json={"name": long_name}, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_create_category_exact_max_length(client):
+    """Category name exactly at 50 chars should succeed."""
+    name = "B" * 50
+    response = client.post("/api/categories", json={"name": name}, headers=AUTH_HEADERS)
+    assert response.status_code == 201
+    assert response.json()["name"] == name
+
+
+def test_update_category_max_length(client, db):
+    cat = models.Category(name="OrigCat")
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+
+    long_name = "C" * 51
+    response = client.put(
+        f"/api/categories/{cat.id}",
+        json={"name": long_name},
+        headers=AUTH_HEADERS,
+    )
+    assert response.status_code == 422
+
+
+def test_update_category_db_state(client, db):
+    cat = models.Category(name="DBState")
+    db.add(cat)
+    db.commit()
+    db.refresh(cat)
+
+    client.put(f"/api/categories/{cat.id}", json={"name": "Renamed"}, headers=AUTH_HEADERS)
+    db.refresh(cat)
+    assert cat.name == "Renamed"

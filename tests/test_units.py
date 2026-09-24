@@ -134,3 +134,48 @@ def test_units_ordered_by_name(client, db):
     names = [u["name"] for u in response.json()]
     assert names == sorted(names)
     assert names[0] == "box"
+
+
+# ---------------------------------------------------------------------------
+# Phase 9 — Extended unit tests
+# ---------------------------------------------------------------------------
+
+def test_create_unit_max_length(client):
+    """Unit name max_length=20; exceeding should fail."""
+    long_name = "U" * 21
+    response = client.post("/api/units", json={"name": long_name}, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_create_unit_exact_max_length(client):
+    """Unit name exactly at 20 chars should succeed."""
+    name = "V" * 20
+    response = client.post("/api/units", json={"name": name}, headers=AUTH_HEADERS)
+    assert response.status_code == 201
+    assert response.json()["name"] == name
+
+
+def test_update_unit_max_length(client, db):
+    unit = models.Unit(name="orig")
+    db.add(unit)
+    db.commit()
+    db.refresh(unit)
+
+    long_name = "W" * 21
+    response = client.put(
+        f"/api/units/{unit.id}",
+        json={"name": long_name},
+        headers=AUTH_HEADERS,
+    )
+    assert response.status_code == 422
+
+
+def test_update_unit_db_state(client, db):
+    unit = models.Unit(name="dbcheck")
+    db.add(unit)
+    db.commit()
+    db.refresh(unit)
+
+    client.put(f"/api/units/{unit.id}", json={"name": "updated"}, headers=AUTH_HEADERS)
+    db.refresh(unit)
+    assert unit.name == "updated"

@@ -166,3 +166,72 @@ def test_customers_ordered_by_name(client, db):
     names = [c["name"] for c in response.json()]
     assert names == sorted(names)
     assert names[0] == "Anna"
+
+
+# ---------------------------------------------------------------------------
+# Phase 7 — Extended customer tests
+# ---------------------------------------------------------------------------
+
+def test_create_customer_duplicate_name_allowed(client):
+    """
+    DOCUMENTED: No uniqueness constraint on customer name.
+    Two customers with the same name can be created.
+    """
+    payload = {"name": "Same Name", "customer_type": "retailer"}
+    r1 = client.post("/api/customers", json=payload, headers=AUTH_HEADERS)
+    r2 = client.post("/api/customers", json=payload, headers=AUTH_HEADERS)
+    assert r1.status_code == 201
+    assert r2.status_code == 201
+    assert r1.json()["id"] != r2.json()["id"]
+
+
+def test_create_customer_empty_name_rejected(client):
+    payload = {"name": "", "customer_type": "retailer"}
+    response = client.post("/api/customers", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 422
+
+
+def test_customer_all_types(client):
+    """All three customer types should be accepted."""
+    for ctype in ("wholesaler", "dealer", "retailer"):
+        resp = client.post(
+            "/api/customers",
+            json={"name": f"Test {ctype}", "customer_type": ctype},
+            headers=AUTH_HEADERS,
+        )
+        assert resp.status_code == 201
+        assert resp.json()["customer_type"] == ctype
+
+
+def test_update_customer_db_state(client, db, sample_customer):
+    """Verify DB state after update."""
+    client.put(
+        f"/api/customers/{sample_customer.id}",
+        json={"name": "Updated Name"},
+        headers=AUTH_HEADERS,
+    )
+    db.refresh(sample_customer)
+    assert sample_customer.name == "Updated Name"
+
+
+def test_delete_customer_db_state(client, db, sample_customer):
+    """Confirm customer is actually gone from DB."""
+    cid = sample_customer.id
+    client.delete(f"/api/customers/{cid}", headers=AUTH_HEADERS)
+    assert db.query(models.Customer).filter(models.Customer.id == cid).first() is None
+
+
+def test_create_customer_with_all_fields(client):
+    payload = {
+        "name": "Full Customer",
+        "customer_type": "dealer",
+        "phone": "9876543210",
+        "email": "full@example.com",
+        "address": "123 Street",
+    }
+    response = client.post("/api/customers", json=payload, headers=AUTH_HEADERS)
+    assert response.status_code == 201
+    data = response.json()
+    assert data["phone"] == "9876543210"
+    assert data["email"] == "full@example.com"
+    assert data["address"] == "123 Street"

@@ -42,7 +42,10 @@ def amount_in_words(amount: float) -> str:
     if n > 0:
         parts.append(_three(n))
 
-    result = ' '.join(parts) + ' Rupees'
-    if paise:
-        result += ' and ' + _two(paise) + ' Paise'
+    if parts:
+        result = ' '.join(parts) + ' Rupees'
+        if paise:
+            result += ' and ' + _two(paise) + ' Paise'
+    else:
+        result = _two(paise) + ' Paise'
     return result + ' Only'
