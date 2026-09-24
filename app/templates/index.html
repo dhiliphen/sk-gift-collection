@@ -2940,10 +2940,17 @@
     try {
       const res = await fetch(`/api/bills/${viewingBillId}/cancel`, { method: 'PATCH' });
       if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      const data = await res.json();
       closeModal('view-bill-modal');
       await loadBills();
       await loadInventory();
-      showToast('Bill cancelled, stock restored');
+      if (data.warnings && data.warnings.length > 0) {
+        alert('⚠️ Bill Cancelled — Stock Warning\n\nThe following items could not have their stock restored because they were deleted from inventory:\n\n' +
+          data.warnings.map(w => '• ' + w).join('\n') +
+          '\n\nPlease adjust your stock records manually.');
+      } else {
+        showToast('Bill cancelled, stock restored');
+      }
     } catch (e) { showToast('Server error', 'error'); }
   }
 
@@ -2952,9 +2959,16 @@
     try {
       const res = await fetch(`/api/bills/${id}/cancel`, { method: 'PATCH' });
       if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      const data = await res.json();
       await loadBills();
       await loadInventory();
-      showToast('Bill cancelled, stock restored');
+      if (data.warnings && data.warnings.length > 0) {
+        alert('⚠️ Bill Cancelled — Stock Warning\n\nThe following items could not have their stock restored because they were deleted from inventory:\n\n' +
+          data.warnings.map(w => '• ' + w).join('\n') +
+          '\n\nPlease adjust your stock records manually.');
+      } else {
+        showToast('Bill cancelled, stock restored');
+      }
     } catch (e) { showToast('Server error', 'error'); }
   }
 

@@ -86,7 +86,9 @@ class BillService:
         self.bill_repo.commit()
         return self.bill_repo.refresh(db_bill)
 
-    def cancel(self, bill_id: int) -> models.Bill:
+    def cancel(self, bill_id: int) -> tuple[models.Bill, list[str]]:
+        """Returns (bill, warnings). warnings lists any line items whose inventory
+        item has been deleted — those quantities could not be restored."""
         bill = self.get_by_id(bill_id)
         if bill.status == "cancelled":
             raise HTTPException(status_code=400, detail="Bill is already cancelled")
@@ -95,11 +97,19 @@ class BillService:
         item_ids = [line.item_id for line in bill.items if line.item_id]
         items_by_id = self.item_repo.get_by_ids(item_ids)
 
+        warnings = []
         for line in bill.items:
             item = items_by_id.get(line.item_id)
             if item:
                 item.quantity += line.quantity
+            elif line.item_id:
+                # Item existed when the bill was created but has since been deleted
+                warnings.append(
+                    f"'{line.item_name}' (qty {line.quantity}) — item has been deleted "
+                    f"from inventory. This quantity could not be restored. "
+                    f"Please adjust your stock records manually."
+                )
 
         bill.status = "cancelled"
         self.bill_repo.commit()
-        return self.bill_repo.refresh(bill)
+        return self.bill_repo.refresh(bill), warnings

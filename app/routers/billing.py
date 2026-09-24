@@ -46,9 +46,10 @@ def create_bill(bill: schemas.BillCreate, service: BillService = Depends(get_ser
     return service.create(bill)
 
 
-@router.patch("/{bill_id}/cancel", response_model=schemas.BillResponse)
+@router.patch("/{bill_id}/cancel", response_model=schemas.BillCancelResponse)
 def cancel_bill(bill_id: int, service: BillService = Depends(get_service)):
-    return service.cancel(bill_id)
+    bill, warnings = service.cancel(bill_id)
+    return {"bill": bill, "warnings": warnings}
 
 
 @router.get("/{bill_id}/print", response_class=HTMLResponse)

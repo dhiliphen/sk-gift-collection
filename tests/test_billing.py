@@ -230,7 +230,9 @@ def test_cancel_bill(client, db, sample_item):
 
     cancel_resp = client.patch(f"/api/bills/{bill_id}/cancel", headers=AUTH_HEADERS)
     assert cancel_resp.status_code == 200
-    assert cancel_resp.json()["status"] == "cancelled"
+    data = cancel_resp.json()
+    assert data["bill"]["status"] == "cancelled"
+    assert data["warnings"] == []
 
     # Stock must be restored to original
     db.refresh(sample_item)
@@ -272,11 +274,53 @@ def test_cancel_bill_stock_restores_correctly(client, db, sample_item, sample_it
         ],
     }
     bill_id = client.post("/api/bills", json=payload, headers=AUTH_HEADERS).json()["id"]
-    client.patch(f"/api/bills/{bill_id}/cancel", headers=AUTH_HEADERS)
+    cancel_data = client.patch(f"/api/bills/{bill_id}/cancel", headers=AUTH_HEADERS).json()
+    assert cancel_data["warnings"] == []
 
     db.refresh(sample_item)
     db.refresh(sample_item_b)
     assert sample_item.quantity == orig_a
+    assert sample_item_b.quantity == orig_b
+
+
+def test_regression_amb003_cancel_bill_with_deleted_item_warns(client, db, sample_item, sample_item_b):
+    """
+    Regression for AMB-003 (now resolved — Option B).
+    When a bill contains an item that was later deleted, cancellation should:
+    - Succeed (200)
+    - Restore stock for items that still exist
+    - Return a non-empty warnings list naming the unrestorable item
+    Old behaviour: silent skip with no warning.
+    """
+    orig_b = sample_item_b.quantity
+
+    payload = {
+        "customer_name": "Deletion Test",
+        "customer_type": "retailer",
+        "items": [
+            {"item_id": sample_item.id, "quantity": 2, "unit_price": 50.0},
+            {"item_id": sample_item_b.id, "quantity": 3, "unit_price": 50.0},
+        ],
+    }
+    bill_id = client.post("/api/bills", json=payload, headers=AUTH_HEADERS).json()["id"]
+
+    # Delete sample_item from inventory
+    item_name = sample_item.name
+    client.delete(f"/api/items/{sample_item.id}", headers=AUTH_HEADERS)
+
+    # Cancel the bill — should still succeed
+    cancel_resp = client.patch(f"/api/bills/{bill_id}/cancel", headers=AUTH_HEADERS)
+    assert cancel_resp.status_code == 200
+
+    data = cancel_resp.json()
+    assert data["bill"]["status"] == "cancelled"
+
+    # Must warn about the deleted item
+    assert len(data["warnings"]) == 1
+    assert item_name in data["warnings"][0]
+
+    # Stock for the surviving item (sample_item_b) must be restored
+    db.refresh(sample_item_b)
     assert sample_item_b.quantity == orig_b
 
 
