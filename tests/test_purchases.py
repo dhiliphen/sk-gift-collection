@@ -166,14 +166,14 @@ def test_cancel_purchase(client, db, sample_item):
     assert sample_item.quantity == stock_before
 
 
-def test_cancel_purchase_stock_floor_at_zero(client, db, sample_item):
+def test_cancel_purchase_stock_consumed_is_blocked(client, db, sample_item):
     """
-    If the item stock was consumed between purchase and cancel,
-    cancellation should floor at 0 rather than going negative.
+    If the item stock has been consumed (current stock < purchased qty),
+    cancellation must be blocked with HTTP 409. The stock trail would break
+    if we allowed it.
     """
     purchase_qty = 50
 
-    # Create the purchase (adds 50 to stock)
     create_resp = client.post(
         "/api/purchases",
         json=_purchase_payload(sample_item.id, quantity=purchase_qty),
@@ -181,17 +181,21 @@ def test_cancel_purchase_stock_floor_at_zero(client, db, sample_item):
     )
     purchase_id = create_resp.json()["id"]
 
-    # Manually set item quantity to 0 to simulate all stock being sold
+    # Simulate all stock being sold
     db.refresh(sample_item)
     sample_item.quantity = 0
     db.commit()
 
-    # Cancelling should not make quantity negative
     cancel_resp = client.patch(f"/api/purchases/{purchase_id}/cancel", headers=AUTH_HEADERS)
-    assert cancel_resp.status_code == 200
+    assert cancel_resp.status_code == 409
+    assert "consumed" in cancel_resp.json()["detail"].lower() or "stock trail" in cancel_resp.json()["detail"].lower()
 
+    # Stock must remain unchanged (0)
     db.refresh(sample_item)
-    assert sample_item.quantity >= 0
+    assert sample_item.quantity == 0
+    # Purchase must still be active
+    get_resp = client.get(f"/api/purchases/{purchase_id}", headers=AUTH_HEADERS)
+    assert get_resp.json()["status"] == "received"
 
 
 def test_cancel_purchase_already_cancelled(client, sample_item):
@@ -302,27 +306,28 @@ def test_purchase_db_state_after_create(client, db, sample_item):
     assert sample_item.quantity == orig_qty + 25
 
 
-def test_purchase_cancel_after_stock_sold(client, db, sample_item):
+def test_regression_purchase_cancel_after_stock_sold_is_blocked(client, db, sample_item):
     """
-    AMBIGUOUS: If purchased stock has been sold, cancellation floors stock at 0.
-    Current behaviour: max(0, qty - purchased_qty). Documents this for confirmation.
+    Regression for AMB-001 (now resolved).
+    Previous behaviour: cancellation floored stock at 0 silently.
+    New behaviour: 409 is returned when purchased stock has been consumed.
     """
-    # Purchase 50 units
     payload = _purchase_payload(sample_item.id, quantity=50, unit_cost=10.0)
     resp = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS)
     purchase_id = resp.json()["id"]
 
-    # Simulate selling all stock
+    # Simulate selling all purchased stock
     db.refresh(sample_item)
     sample_item.quantity = 0
     db.commit()
 
-    # Cancel the purchase -- should not go negative
     cancel_resp = client.patch(f"/api/purchases/{purchase_id}/cancel", headers=AUTH_HEADERS)
-    assert cancel_resp.status_code == 200
-
-    db.refresh(sample_item)
-    assert sample_item.quantity == 0  # floored at 0, not -50
+    assert cancel_resp.status_code == 409, (
+        "Expected 409 when purchased stock has been consumed — "
+        "old behaviour (200 + floor at 0) would silently break the stock trail"
+    )
+    # Purchase remains active
+    assert client.get(f"/api/purchases/{purchase_id}", headers=AUTH_HEADERS).json()["status"] == "received"
 
 
 def test_purchase_line_total_calculation(client, sample_item):

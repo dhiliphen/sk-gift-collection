@@ -71,10 +71,29 @@ class PurchaseService:
         item_ids = [line.item_id for line in pb.items if line.item_id]
         items_by_id = self.item_repo.get_by_ids(item_ids)
 
+        # Block cancellation if any purchased stock has already been consumed by sales.
+        # If current stock < quantity originally purchased, reversing would make stock
+        # negative — meaning those units were already sold. The stock trail would break.
+        consumed = []
+        for line in pb.items:
+            item = items_by_id.get(line.item_id)
+            if item and item.quantity < line.quantity:
+                consumed.append(
+                    f"'{item.name}': purchased {line.quantity}, only {item.quantity} remaining"
+                )
+
+        if consumed:
+            detail = (
+                f"Cannot cancel {pb.purchase_number} — stock has been partially or fully "
+                f"consumed by sales: {'; '.join(consumed)}. "
+                f"Please verify the stock trail before cancelling."
+            )
+            raise HTTPException(status_code=409, detail=detail)
+
         for line in pb.items:
             item = items_by_id.get(line.item_id)
             if item:
-                item.quantity = max(0, item.quantity - line.quantity)
+                item.quantity -= line.quantity
 
         pb.status = "cancelled"
         self.purchase_repo.commit()

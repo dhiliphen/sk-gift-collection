@@ -3287,7 +3287,13 @@
   async function cancelCurrentPurchase() {
     if (!confirm('Cancel this purchase? Stock will be reversed.')) return;
     try {
-      await fetch(`/api/purchases/${currentPurchaseId}/cancel`, { method: 'PATCH' });
+      const res = await fetch(`/api/purchases/${currentPurchaseId}/cancel`, { method: 'PATCH' });
+      if (res.status === 409) {
+        const err = await res.json();
+        alert('⚠️ Stock Trail Warning\n\n' + err.detail + '\n\nPlease check your inventory before proceeding.');
+        return;
+      }
+      if (!res.ok) { showToast('Failed to cancel purchase', 'error'); return; }
       closeModal('view-purchase-modal');
       await loadPurchases();
       await loadInventory();
@@ -3298,7 +3304,13 @@
   async function cancelPurchaseDirect(id) {
     if (!confirm('Cancel this purchase? Stock will be reversed.')) return;
     try {
-      await fetch(`/api/purchases/${id}/cancel`, { method: 'PATCH' });
+      const res = await fetch(`/api/purchases/${id}/cancel`, { method: 'PATCH' });
+      if (res.status === 409) {
+        const err = await res.json();
+        alert('⚠️ Stock Trail Warning\n\n' + err.detail + '\n\nPlease check your inventory before proceeding.');
+        return;
+      }
+      if (!res.ok) { showToast('Failed to cancel purchase', 'error'); return; }
       await loadPurchases();
       await loadInventory();
       showToast('Purchase cancelled — stock reversed');
