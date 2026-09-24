@@ -172,17 +172,84 @@ def test_customers_ordered_by_name(client, db):
 # Phase 7 — Extended customer tests
 # ---------------------------------------------------------------------------
 
-def test_create_customer_duplicate_name_allowed(client):
-    """
-    DOCUMENTED: No uniqueness constraint on customer name.
-    Two customers with the same name can be created.
-    """
-    payload = {"name": "Same Name", "customer_type": "retailer"}
-    r1 = client.post("/api/customers", json=payload, headers=AUTH_HEADERS)
-    r2 = client.post("/api/customers", json=payload, headers=AUTH_HEADERS)
+def test_duplicate_name_different_phone_allowed(client):
+    """Same name is allowed when phone numbers differ."""
+    r1 = client.post("/api/customers", json={
+        "name": "Ramesh Traders", "customer_type": "retailer", "phone": "9000000001",
+    }, headers=AUTH_HEADERS)
+    r2 = client.post("/api/customers", json={
+        "name": "Ramesh Traders", "customer_type": "retailer", "phone": "9000000002",
+    }, headers=AUTH_HEADERS)
     assert r1.status_code == 201
     assert r2.status_code == 201
     assert r1.json()["id"] != r2.json()["id"]
+
+
+def test_duplicate_name_different_address_allowed(client):
+    """Same name is allowed when addresses differ."""
+    r1 = client.post("/api/customers", json={
+        "name": "Ramesh Traders", "customer_type": "retailer", "address": "Shop 1, Dharavi",
+    }, headers=AUTH_HEADERS)
+    r2 = client.post("/api/customers", json={
+        "name": "Ramesh Traders", "customer_type": "retailer", "address": "Shop 2, Andheri",
+    }, headers=AUTH_HEADERS)
+    assert r1.status_code == 201
+    assert r2.status_code == 201
+
+
+def test_duplicate_name_same_phone_and_address_blocked(client):
+    """Same name + same phone + same address → 400."""
+    payload = {
+        "name": "Ramesh Traders", "customer_type": "retailer",
+        "phone": "9000000001", "address": "Shop 1, Dharavi",
+    }
+    r1 = client.post("/api/customers", json=payload, headers=AUTH_HEADERS)
+    r2 = client.post("/api/customers", json=payload, headers=AUTH_HEADERS)
+    assert r1.status_code == 201
+    assert r2.status_code == 400
+    assert "already exists" in r2.json()["detail"]
+
+
+def test_duplicate_name_no_contact_info_blocked(client):
+    """Same name with no phone and no address → blocked (indistinguishable records)."""
+    payload = {"name": "Ghost Customer", "customer_type": "retailer"}
+    r1 = client.post("/api/customers", json=payload, headers=AUTH_HEADERS)
+    r2 = client.post("/api/customers", json=payload, headers=AUTH_HEADERS)
+    assert r1.status_code == 201
+    assert r2.status_code == 400
+
+
+def test_regression_amb002_update_into_duplicate_blocked(client):
+    """
+    Regression for AMB-002. Updating a customer so it becomes identical
+    (name + phone + address) to another customer must be blocked.
+    """
+    r1 = client.post("/api/customers", json={
+        "name": "Ramesh Traders", "customer_type": "retailer",
+        "phone": "9000000001", "address": "Shop 1",
+    }, headers=AUTH_HEADERS)
+    r2 = client.post("/api/customers", json={
+        "name": "Ramesh Traders", "customer_type": "retailer",
+        "phone": "9000000002", "address": "Shop 2",
+    }, headers=AUTH_HEADERS)
+    # Try to update r2 so it becomes identical to r1
+    update = client.put(f"/api/customers/{r2.json()['id']}", json={
+        "phone": "9000000001", "address": "Shop 1",
+    }, headers=AUTH_HEADERS)
+    assert update.status_code == 400
+
+
+def test_update_customer_same_data_allowed(client):
+    """Updating a customer with its own data (no actual change) must not block."""
+    r = client.post("/api/customers", json={
+        "name": "Self Update", "customer_type": "retailer",
+        "phone": "9000000001", "address": "Shop 1",
+    }, headers=AUTH_HEADERS)
+    cid = r.json()["id"]
+    update = client.put(f"/api/customers/{cid}", json={
+        "phone": "9000000001", "address": "Shop 1",
+    }, headers=AUTH_HEADERS)
+    assert update.status_code == 200
 
 
 def test_create_customer_empty_name_rejected(client):

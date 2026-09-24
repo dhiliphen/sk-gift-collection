@@ -18,6 +18,14 @@ class CustomerService:
         return customer
 
     def create(self, data: schemas.CustomerCreate) -> models.Customer:
+        if self.repo.find_duplicate(data.name, data.phone, data.address):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "A customer with this name, phone number and address already exists. "
+                    "If this is a different customer, please provide a different phone number or address."
+                ),
+            )
         customer = models.Customer(**data.model_dump())
         self.repo.save(customer)
         self.repo.commit()
@@ -25,7 +33,20 @@ class CustomerService:
 
     def update(self, customer_id: int, data: schemas.CustomerUpdate) -> models.Customer:
         customer = self.get_by_id(customer_id)
-        for field, value in data.model_dump(exclude_unset=True).items():
+        # Compute what the record will look like after the update
+        updated = data.model_dump(exclude_unset=True)
+        new_name = updated.get("name", customer.name)
+        new_phone = updated.get("phone", customer.phone)
+        new_address = updated.get("address", customer.address)
+        if self.repo.find_duplicate(new_name, new_phone, new_address, exclude_id=customer_id):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Another customer with this name, phone number and address already exists. "
+                    "Please use a different phone number or address."
+                ),
+            )
+        for field, value in updated.items():
             setattr(customer, field, value)
         self.repo.commit()
         return self.repo.refresh(customer)
