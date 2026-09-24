@@ -114,6 +114,7 @@ class BillResponse(BaseModel):
     total_amount: float
     created_at: Optional[datetime]
     items: List[BillItemResponse] = []
+    warnings: List[str] = []
 
     class Config:
         from_attributes = True

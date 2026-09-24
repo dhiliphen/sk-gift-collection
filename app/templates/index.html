@@ -2876,10 +2876,17 @@
         })
       });
       if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error creating bill', 'error'); return; }
+      const data = await res.json();
       closeModal('create-bill-modal');
       await loadBills();
-      await loadInventory();  // refresh stock
-      showToast('Bill created successfully');
+      await loadInventory();
+      if (data.warnings && data.warnings.length > 0) {
+        alert('✅ Bill ' + data.invoice_number + ' created\n\n⚠️ Price Override Notice:\n\n' +
+          data.warnings.map(w => '• ' + w).join('\n') +
+          '\n\nThe bill has been saved. Please confirm this was intentional.');
+      } else {
+        showToast('Bill created successfully');
+      }
     } catch (e) { showToast('Server error', 'error'); }
   }
 

@@ -691,3 +691,145 @@ def test_bill_float_precision_sum(client, db):
     assert data["taxable_amount"] == 30.0
     assert data["igst_amount"] == 3.0
     assert data["total_amount"] == 33.0
+
+
+# ---------------------------------------------------------------------------
+# AMB-004 — Price tier soft enforcement tests
+# ---------------------------------------------------------------------------
+
+def _item_with_tiers(db, name="TierItem"):
+    """Creates an item with all three price tiers set."""
+    item = models.Item(
+        name=name, quantity=100, cost_price=50.0,
+        selling_price=100.0, dealer_price=90.0, wholesale_price=80.0,
+        gst_rate=0.0, unit="pcs",
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+def test_retailer_at_selling_price_no_warning(client, db):
+    """Retailer billed at selling_price → no warning."""
+    item = _item_with_tiers(db, "RetailOK")
+    payload = {
+        "customer_name": "Retail Bob", "customer_type": "retailer",
+        "items": [{"item_id": item.id, "quantity": 1, "unit_price": 100.0}],
+    }
+    data = client.post("/api/bills", json=payload, headers=AUTH_HEADERS).json()
+    assert data["warnings"] == []
+
+
+def test_dealer_at_dealer_price_no_warning(client, db):
+    """Dealer billed at dealer_price → no warning."""
+    item = _item_with_tiers(db, "DealerOK")
+    payload = {
+        "customer_name": "Dealer Dave", "customer_type": "dealer",
+        "items": [{"item_id": item.id, "quantity": 1, "unit_price": 90.0}],
+    }
+    data = client.post("/api/bills", json=payload, headers=AUTH_HEADERS).json()
+    assert data["warnings"] == []
+
+
+def test_wholesaler_at_wholesale_price_no_warning(client, db):
+    """Wholesaler billed at wholesale_price → no warning."""
+    item = _item_with_tiers(db, "WholeOK")
+    payload = {
+        "customer_name": "Whole Walt", "customer_type": "wholesaler",
+        "items": [{"item_id": item.id, "quantity": 1, "unit_price": 80.0}],
+    }
+    data = client.post("/api/bills", json=payload, headers=AUTH_HEADERS).json()
+    assert data["warnings"] == []
+
+
+def test_retailer_at_wrong_price_warns(client, db):
+    """Retailer billed at wholesale price → warning returned, bill still created."""
+    item = _item_with_tiers(db, "RetailWarn")
+    payload = {
+        "customer_name": "Retail Err", "customer_type": "retailer",
+        "items": [{"item_id": item.id, "quantity": 2, "unit_price": 80.0}],
+    }
+    resp = client.post("/api/bills", json=payload, headers=AUTH_HEADERS)
+    assert resp.status_code == 201          # bill still created
+    data = resp.json()
+    assert len(data["warnings"]) == 1
+    assert "RetailWarn" in data["warnings"][0]
+    assert "80.00" in data["warnings"][0]  # billed at
+    assert "100.00" in data["warnings"][0]  # standard price
+
+
+def test_wholesaler_at_retail_price_warns(client, db):
+    """Wholesaler accidentally billed at retail price → warning."""
+    item = _item_with_tiers(db, "WholePriceErr")
+    payload = {
+        "customer_name": "Whole Err", "customer_type": "wholesaler",
+        "items": [{"item_id": item.id, "quantity": 5, "unit_price": 100.0}],
+    }
+    resp = client.post("/api/bills", json=payload, headers=AUTH_HEADERS)
+    assert resp.status_code == 201
+    data = resp.json()
+    assert len(data["warnings"]) == 1
+    assert "80.00" in data["warnings"][0]  # standard wholesale price
+
+
+def test_price_override_allowed_bill_amounts_correct(client, db):
+    """Even with a price warning, the bill's financial figures use the submitted price."""
+    item = _item_with_tiers(db, "OverrideAmt")
+    payload = {
+        "customer_name": "Special Deal", "customer_type": "retailer",
+        "items": [{"item_id": item.id, "quantity": 3, "unit_price": 85.0}],
+    }
+    resp = client.post("/api/bills", json=payload, headers=AUTH_HEADERS)
+    assert resp.status_code == 201
+    data = resp.json()
+    assert data["taxable_amount"] == round(3 * 85.0, 2)  # 255.0 — override price used
+
+
+def test_tier_price_zero_no_warning(client, db):
+    """If the tier price is 0 (not configured), do not warn — zero means unset."""
+    item = models.Item(
+        name="ZeroTier", quantity=100, cost_price=10.0,
+        selling_price=50.0, dealer_price=0.0, wholesale_price=0.0,
+        gst_rate=0.0, unit="pcs",
+    )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    payload = {
+        "customer_name": "No Tier", "customer_type": "wholesaler",
+        "items": [{"item_id": item.id, "quantity": 1, "unit_price": 99.0}],
+    }
+    data = client.post("/api/bills", json=payload, headers=AUTH_HEADERS).json()
+    assert data["warnings"] == []
+
+
+def test_multi_line_partial_warning(client, db):
+    """Multi-line bill: only the overridden item warns, the correct one does not."""
+    item_a = _item_with_tiers(db, "MultiA")
+    item_b = _item_with_tiers(db, "MultiB")
+    payload = {
+        "customer_name": "Mixed", "customer_type": "retailer",
+        "items": [
+            {"item_id": item_a.id, "quantity": 1, "unit_price": 100.0},  # correct
+            {"item_id": item_b.id, "quantity": 1, "unit_price": 60.0},   # wrong
+        ],
+    }
+    data = client.post("/api/bills", json=payload, headers=AUTH_HEADERS).json()
+    assert len(data["warnings"]) == 1
+    assert "MultiB" in data["warnings"][0]
+
+
+def test_regression_amb004_price_mismatch_does_not_block(client, db):
+    """
+    Regression for AMB-004. A price that differs from the tier must never block
+    the bill — it is a deliberate override path (e.g. special deals).
+    """
+    item = _item_with_tiers(db, "Regression004")
+    payload = {
+        "customer_name": "Deal Customer", "customer_type": "dealer",
+        "items": [{"item_id": item.id, "quantity": 10, "unit_price": 75.0}],
+    }
+    resp = client.post("/api/bills", json=payload, headers=AUTH_HEADERS)
+    assert resp.status_code == 201, "Price override must not block bill creation"
+    assert resp.json()["id"] is not None

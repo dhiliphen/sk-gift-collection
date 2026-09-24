@@ -18,7 +18,14 @@ class BillService:
             raise HTTPException(status_code=404, detail="Bill not found")
         return bill
 
-    def create(self, data: schemas.BillCreate) -> models.Bill:
+    # Maps customer_type to the item attribute that holds the standard price for that tier
+    _TIER_PRICE_FIELD = {
+        "retailer":   "selling_price",
+        "dealer":     "dealer_price",
+        "wholesaler": "wholesale_price",
+    }
+
+    def create(self, data: schemas.BillCreate) -> tuple[models.Bill, list[str]]:
         if not data.items:
             raise HTTPException(status_code=400, detail="Bill must have at least one item")
 
@@ -84,7 +91,22 @@ class BillService:
         db_bill.total_amount = round(taxable_total + igst_total, 2)
 
         self.bill_repo.commit()
-        return self.bill_repo.refresh(db_bill)
+        bill = self.bill_repo.refresh(db_bill)
+
+        # Soft price-tier check — warn if any line price differs from the
+        # standard price for this customer type (only when the tier price is set)
+        price_field = self._TIER_PRICE_FIELD.get(data.customer_type or "retailer")
+        warnings = []
+        if price_field:
+            for item, line in resolved:
+                expected = getattr(item, price_field, 0.0) or 0.0
+                if expected > 0 and round(line.unit_price, 2) != round(expected, 2):
+                    warnings.append(
+                        f"'{item.name}': billed at ₹{line.unit_price:.2f} but standard "
+                        f"{data.customer_type} price is ₹{expected:.2f}."
+                    )
+
+        return bill, warnings
 
     def cancel(self, bill_id: int) -> tuple[models.Bill, list[str]]:
         """Returns (bill, warnings). warnings lists any line items whose inventory
