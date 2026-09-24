@@ -901,10 +901,16 @@
 
   .bill-line-item {
     display: grid;
-    grid-template-columns: 1fr 80px 100px 80px 28px;
+    grid-template-columns: 24px 1fr 80px 100px 80px 28px;
     gap: 0.5rem;
     align-items: center;
     margin-bottom: 0.5rem;
+  }
+  .line-sno {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-align: center;
   }
 
   .bill-line-item select,
@@ -961,10 +967,15 @@
 
   .line-header {
     display: grid;
-    grid-template-columns: 1fr 80px 100px 80px 28px;
+    grid-template-columns: 24px 1fr 80px 100px 80px 28px;
     gap: 0.5rem;
     margin-bottom: 0.4rem;
   }
+  /* Sortable inventory table headers */
+  th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+  th.sortable:hover { color: var(--accent); }
+  th.sort-asc::after  { content: ' ▲'; color: var(--accent); font-size: 0.65rem; }
+  th.sort-desc::after { content: ' ▼'; color: var(--accent); font-size: 0.65rem; }
 
   .line-header span {
     font-family: var(--mono);
@@ -1169,8 +1180,8 @@
     .toolbar { gap: 0.5rem; }
     .filter-group { flex-wrap: wrap; gap: 0.4rem; }
 
-    .bill-line-item { grid-template-columns: 1fr 60px 85px 65px 24px; gap: 0.35rem; }
-    .line-header { grid-template-columns: 1fr 60px 85px 65px 24px; gap: 0.35rem; }
+    .bill-line-item { grid-template-columns: 20px 1fr 60px 85px 65px 24px; gap: 0.35rem; }
+    .line-header { grid-template-columns: 20px 1fr 60px 85px 65px 24px; gap: 0.35rem; }
 
     .bill-total-row { flex-direction: column; align-items: flex-end; gap: 0.5rem; }
 
@@ -1290,14 +1301,14 @@
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Product</th>
-              <th>Supplier</th>
-              <th>Quantity</th>
-              <th>Cost</th>
-              <th>Wholesale</th>
-              <th>Dealer</th>
-              <th>Retail</th>
+              <th class="sortable" onclick="sortInventory('id')">#</th>
+              <th class="sortable" onclick="sortInventory('name')">Product</th>
+              <th class="sortable" onclick="sortInventory('supplier')">Supplier</th>
+              <th class="sortable" onclick="sortInventory('quantity')">Quantity</th>
+              <th class="sortable" onclick="sortInventory('cost_price')">Cost</th>
+              <th class="sortable" onclick="sortInventory('wholesale_price')">Wholesale</th>
+              <th class="sortable" onclick="sortInventory('dealer_price')">Dealer</th>
+              <th class="sortable" onclick="sortInventory('selling_price')">Retail</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -1499,7 +1510,7 @@
       <hr class="divider">
       <div class="sidebar-title" style="margin-bottom:0.75rem;">Items Received</div>
       <div class="line-header">
-        <span>Item</span><span>Qty</span><span>Unit Cost</span><span>Total</span><span></span>
+        <span>#</span><span>Item</span><span>Qty</span><span>Unit Cost</span><span>Total</span><span></span>
       </div>
       <div id="purchase-lines"></div>
       <button class="btn btn-ghost" style="width:100%; margin-top:0.5rem;" onclick="addPurchaseLine()">+ ADD ITEM</button>
@@ -1753,7 +1764,7 @@
       <hr class="divider">
       <div class="sidebar-title" style="margin-bottom:0.75rem;">Line Items</div>
       <div class="line-header">
-        <span>Item</span><span>Qty</span><span>Unit Price</span><span>Total</span><span></span>
+        <span>#</span><span>Item</span><span>Qty</span><span>Unit Price</span><span>Total</span><span></span>
       </div>
       <div id="bill-lines"></div>
       <button class="btn btn-ghost" style="width:100%; margin-top:0.5rem;" onclick="addBillLine()">+ ADD ITEM</button>
@@ -2096,6 +2107,8 @@
   let currentFilter = 'all';
   let stockDirection = 'add';
   let stockQty = 0;
+  let inventorySortCol = 'name';
+  let inventorySortDir = 'asc';
 
   // ── Fetch & Render ──────────────────────────────────────
   async function loadInventory() {
@@ -2141,13 +2154,48 @@
     } catch (e) {}
   }
 
+  function sortInventory(col) {
+    if (inventorySortCol === col) {
+      inventorySortDir = inventorySortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+      inventorySortCol = col;
+      inventorySortDir = 'asc';
+    }
+    // Update header classes
+    document.querySelectorAll('#view-inventory th.sortable').forEach(th => {
+      th.classList.remove('sort-asc', 'sort-desc');
+    });
+    const ths = document.querySelectorAll('#view-inventory th.sortable');
+    const colOrder = ['id','name','supplier','quantity','cost_price','wholesale_price','dealer_price','selling_price'];
+    const idx = colOrder.indexOf(col);
+    if (idx >= 0 && ths[idx]) ths[idx].classList.add(inventorySortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+    filterItems();
+  }
+
+  function getSortValue(item, col) {
+    const v = item[col];
+    return (v === null || v === undefined) ? '' : v;
+  }
+
   function renderTable(items) {
+    // Sort before rendering
+    const sorted = [...items].sort((a, b) => {
+      const va = getSortValue(a, inventorySortCol);
+      const vb = getSortValue(b, inventorySortCol);
+      let cmp = 0;
+      if (typeof va === 'number' && typeof vb === 'number') {
+        cmp = va - vb;
+      } else {
+        cmp = String(va).toLowerCase().localeCompare(String(vb).toLowerCase());
+      }
+      return inventorySortDir === 'asc' ? cmp : -cmp;
+    });
     const tbody = document.getElementById('inventory-table');
     if (!items.length) {
       tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No items found</div></div></td></tr>`;
       return;
     }
-    tbody.innerHTML = items.map(item => {
+    tbody.innerHTML = sorted.map(item => {
       const isLow = item.quantity <= item.low_stock_threshold;
       return `
         <tr>
@@ -2786,18 +2834,19 @@
 
   function addBillLine() {
     const container = document.getElementById('bill-lines');
-    const idx = container.children.length;
+    const sno = container.children.length + 1;
     const itemOpts = allItems.map(i =>
       `<option value="${i.id}" data-retail="${i.selling_price}" data-wholesale="${i.wholesale_price||0}" data-dealer="${i.dealer_price||0}" data-gst="${i.gst_rate||0}">${i.name} (${i.quantity} ${i.unit})</option>`
     ).join('');
     const div = document.createElement('div');
     div.className = 'bill-line-item';
     div.innerHTML = `
-      <select onchange="onLineItemChange(this)" data-idx="${idx}">
+      <span class="line-sno">${sno}</span>
+      <select onchange="onLineItemChange(this)">
         <option value="">— select —</option>${itemOpts}
       </select>
-      <input type="number" min="1" value="1" placeholder="Qty" oninput="recalcLine(this.closest('.bill-line-item'))" data-idx="${idx}">
-      <input type="number" min="0" step="0.01" value="" placeholder="Price" oninput="recalcLine(this.closest('.bill-line-item'))" data-idx="${idx}">
+      <input type="number" min="1" value="1" placeholder="Qty" oninput="recalcLine(this.closest('.bill-line-item'))">
+      <input type="number" min="0" step="0.01" value="" placeholder="Price" oninput="recalcLine(this.closest('.bill-line-item'))">
       <div class="line-total-display">₹0.00</div>
       <button class="remove-line-btn" onclick="removeBillLine(this)">×</button>`;
     container.appendChild(div);
@@ -2827,7 +2876,15 @@
 
   function removeBillLine(btn) {
     btn.closest('.bill-line-item').remove();
+    renumberLines('bill-lines');
     recalcGrandTotal();
+  }
+
+  function renumberLines(containerId) {
+    document.querySelectorAll(`#${containerId} .bill-line-item`).forEach((row, i) => {
+      const sno = row.querySelector('.line-sno');
+      if (sno) sno.textContent = i + 1;
+    });
   }
 
   function recalcGrandTotal() {
@@ -3215,20 +3272,21 @@
 
   function addPurchaseLine() {
     const container = document.getElementById('purchase-lines');
-    const idx = container.children.length;
+    const sno = container.children.length + 1;
     const itemOpts = allItems.map(i =>
       `<option value="${i.id}">${i.name} (stock: ${i.quantity} ${i.unit})</option>`
     ).join('');
     const div = document.createElement('div');
     div.className = 'bill-line-item';
     div.innerHTML = `
-      <select data-idx="${idx}">
+      <span class="line-sno">${sno}</span>
+      <select>
         <option value="">— select item —</option>${itemOpts}
       </select>
-      <input type="number" min="1" value="1" placeholder="Qty" oninput="recalcPurchaseLine(this.closest('.bill-line-item'))" data-idx="${idx}">
-      <input type="number" min="0" step="0.01" value="" placeholder="Unit Cost" oninput="recalcPurchaseLine(this.closest('.bill-line-item'))" data-idx="${idx}">
+      <input type="number" min="1" value="1" placeholder="Qty" oninput="recalcPurchaseLine(this.closest('.bill-line-item'))">
+      <input type="number" min="0" step="0.01" value="" placeholder="Unit Cost" oninput="recalcPurchaseLine(this.closest('.bill-line-item'))">
       <div class="line-total-display">₹0.00</div>
-      <button class="remove-line-btn" onclick="this.closest('.bill-line-item').remove(); recalcPurchaseTotal()">×</button>`;
+      <button class="remove-line-btn" onclick="this.closest('.bill-line-item').remove(); renumberLines('purchase-lines'); recalcPurchaseTotal()">×</button>`;
     container.appendChild(div);
   }
 
