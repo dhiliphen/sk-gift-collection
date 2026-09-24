@@ -159,7 +159,9 @@ def test_cancel_purchase(client, db, sample_item):
 
     cancel_resp = client.patch(f"/api/purchases/{purchase_id}/cancel", headers=AUTH_HEADERS)
     assert cancel_resp.status_code == 200
-    assert cancel_resp.json()["status"] == "cancelled"
+    data = cancel_resp.json()
+    assert data["purchase"]["status"] == "cancelled"
+    assert data["warnings"] == []
 
     # Stock must be back to original
     db.refresh(sample_item)
@@ -394,3 +396,44 @@ def test_purchase_print_endpoint(client, sample_item):
     print_resp = client.get(f"/api/purchases/{purchase_id}/print", headers=AUTH_HEADERS)
     assert print_resp.status_code == 200
     assert "text/html" in print_resp.headers.get("content-type", "")
+
+
+def test_regression_amb003_purchase_cancel_with_deleted_item_warns(client, db, sample_item, sample_item_b):
+    """
+    Regression for AMB-003 applied to purchases.
+    When a purchase contains an item that was later deleted from inventory,
+    cancellation should:
+    - Succeed (200)
+    - Reverse stock for items that still exist
+    - Return a non-empty warnings list naming the item whose stock could not be reversed
+    Old behaviour: silent skip with no warning.
+    """
+    orig_b = sample_item_b.quantity
+
+    payload = {
+        "supplier_name": "Test Supplier",
+        "items": [
+            {"item_id": sample_item.id,   "quantity": 5,  "unit_cost": 10.0},
+            {"item_id": sample_item_b.id, "quantity": 10, "unit_cost": 20.0},
+        ],
+    }
+    purchase_id = client.post("/api/purchases", json=payload, headers=AUTH_HEADERS).json()["id"]
+
+    # Delete sample_item from inventory after the purchase
+    item_name = sample_item.name
+    client.delete(f"/api/items/{sample_item.id}", headers=AUTH_HEADERS)
+
+    # Cancel the purchase — should still succeed
+    cancel_resp = client.patch(f"/api/purchases/{purchase_id}/cancel", headers=AUTH_HEADERS)
+    assert cancel_resp.status_code == 200
+
+    data = cancel_resp.json()
+    assert data["purchase"]["status"] == "cancelled"
+
+    # Must warn about the deleted item
+    assert len(data["warnings"]) == 1
+    assert item_name in data["warnings"][0]
+
+    # Stock for the surviving item (sample_item_b) must be reversed correctly
+    db.refresh(sample_item_b)
+    assert sample_item_b.quantity == orig_b

@@ -46,9 +46,10 @@ def create_purchase(purchase: schemas.PurchaseCreate, service: PurchaseService =
     return service.create(purchase)
 
 
-@router.patch("/{purchase_id}/cancel", response_model=schemas.PurchaseResponse)
+@router.patch("/{purchase_id}/cancel", response_model=schemas.PurchaseCancelResponse)
 def cancel_purchase(purchase_id: int, service: PurchaseService = Depends(get_service)):
-    return service.cancel(purchase_id)
+    purchase, warnings = service.cancel(purchase_id)
+    return {"purchase": purchase, "warnings": warnings}
 
 
 @router.get("/{purchase_id}/print", response_class=HTMLResponse)

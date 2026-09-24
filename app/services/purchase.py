@@ -62,7 +62,9 @@ class PurchaseService:
         self.purchase_repo.commit()
         return self.purchase_repo.refresh(db_bill)
 
-    def cancel(self, purchase_id: int) -> models.PurchaseBill:
+    def cancel(self, purchase_id: int) -> tuple[models.PurchaseBill, list[str]]:
+        """Returns (purchase, warnings). warnings lists any line items whose inventory
+        item has been deleted — those quantities could not be deducted from stock."""
         pb = self.get_by_id(purchase_id)
         if pb.status == "cancelled":
             raise HTTPException(status_code=400, detail="Already cancelled")
@@ -71,9 +73,8 @@ class PurchaseService:
         item_ids = [line.item_id for line in pb.items if line.item_id]
         items_by_id = self.item_repo.get_by_ids(item_ids)
 
-        # Block cancellation if any purchased stock has already been consumed by sales.
-        # If current stock < quantity originally purchased, reversing would make stock
-        # negative — meaning those units were already sold. The stock trail would break.
+        # Block cancellation if any existing item's stock has been consumed by sales.
+        # Deleted items are skipped here — they are handled as warnings below.
         consumed = []
         for line in pb.items:
             item = items_by_id.get(line.item_id)
@@ -90,11 +91,19 @@ class PurchaseService:
             )
             raise HTTPException(status_code=409, detail=detail)
 
+        warnings = []
         for line in pb.items:
             item = items_by_id.get(line.item_id)
             if item:
                 item.quantity -= line.quantity
+            elif line.item_id:
+                # Item existed when the purchase was recorded but has since been deleted
+                warnings.append(
+                    f"'{line.item_name}' (qty {line.quantity}) — item has been deleted "
+                    f"from inventory. This quantity could not be reversed. "
+                    f"Please adjust your stock records manually."
+                )
 
         pb.status = "cancelled"
         self.purchase_repo.commit()
-        return self.purchase_repo.refresh(pb)
+        return self.purchase_repo.refresh(pb), warnings

@@ -3315,10 +3315,17 @@
         return;
       }
       if (!res.ok) { showToast('Failed to cancel purchase', 'error'); return; }
+      const data = await res.json();
       closeModal('view-purchase-modal');
       await loadPurchases();
       await loadInventory();
-      showToast('Purchase cancelled — stock reversed');
+      if (data.warnings && data.warnings.length > 0) {
+        alert('⚠️ Purchase Cancelled — Stock Warning\n\nThe following items could not have their stock reversed because they were deleted from inventory:\n\n' +
+          data.warnings.map(w => '• ' + w).join('\n') +
+          '\n\nPlease adjust your stock records manually.');
+      } else {
+        showToast('Purchase cancelled — stock reversed');
+      }
     } catch (e) { showToast('Server error', 'error'); }
   }
 
@@ -3332,9 +3339,16 @@
         return;
       }
       if (!res.ok) { showToast('Failed to cancel purchase', 'error'); return; }
+      const data = await res.json();
       await loadPurchases();
       await loadInventory();
-      showToast('Purchase cancelled — stock reversed');
+      if (data.warnings && data.warnings.length > 0) {
+        alert('⚠️ Purchase Cancelled — Stock Warning\n\nThe following items could not have their stock reversed because they were deleted from inventory:\n\n' +
+          data.warnings.map(w => '• ' + w).join('\n') +
+          '\n\nPlease adjust your stock records manually.');
+      } else {
+        showToast('Purchase cancelled — stock reversed');
+      }
     } catch (e) { showToast('Server error', 'error'); }
   }
 

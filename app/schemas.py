@@ -128,6 +128,14 @@ class BillCancelResponse(BaseModel):
     warnings: List[str] = []
 
 
+class PurchaseCancelResponse(BaseModel):
+    """Returned by PATCH /api/purchases/{id}/cancel.
+    warnings is non-empty when purchase line items referenced items that have since
+    been deleted — those quantities could not be deducted from inventory."""
+    purchase: PurchaseResponse
+    warnings: List[str] = []
+
+
 class CategoryCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=50)
 
