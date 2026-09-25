@@ -1,207 +1,229 @@
-# Customer Inventory & Billing Application -- QA Report
+# QA Report
 
-## Executive Summary
+This supersedes the original QA audit (234 tests, single-session snapshot before the business-system transformation described in `ARCHITECTURE.md`). That audit's defects and open business-rule questions (AMB-001 through AMB-004) have since been resolved; this report reflects the application as it stands after seven feature phases (stock ledger, payment tracking, GST engine + Decimal money, business-intelligence dashboard, audit log + RBAC, purchase orders/goods receipt, and sales/purchase returns).
 
-A comprehensive QA audit was performed on the SK Gift Collection Inventory & Billing application. The application is built with FastAPI + SQLAlchemy (SQLite) + Jinja2, following a clean repository/service/router architecture. Testing covered all API endpoints, business logic, authentication, security, financial calculations, and atomicity guarantees.
+## Executive summary
 
-**Result**: 234 tests pass, 99% code coverage. Two defects were found and fixed. Several business rules flagged as ambiguous for customer confirmation.
+**411 tests pass, 99% overall statement coverage, 100% on every file touched during the transformation work.** Three real defects were found during this work — none by inspection; all three were caught by either writing a regression test first or by testing the running application against its real database, and all three are fixed with a regression test in place. No known correctness bugs remain open.
 
-## Test Environment
+## Test environment
 
-- **Python**: 3.12.12
+- **Python**: 3.11.15 (pinned via `.python-version` — Railway's default 3.13 is incompatible with this SQLAlchemy version's `greenlet` dependency)
 - **Framework**: FastAPI 0.111.0 + SQLAlchemy 2.0.30
-- **Test runner**: pytest 8.3.2 with pytest-cov 5.0.0
-- **Database**: SQLite in-memory with StaticPool (isolated per test)
-- **Auth bypass**: X-Internal-Key header for API tests
+- **Test runner**: pytest 9.1.1 with pytest-cov 7.1.0
+- **Database**: SQLite in-memory with `StaticPool`, fully isolated per test function, seeded with a default admin user per test
+- **Auth bypass**: `X-Internal-Key` header for API tests; session-cookie login tested directly where auth behavior itself is under test
 
-## Test Results
+## Test results
 
 | Metric | Value |
-|--------|-------|
-| Total tests | 234 |
-| Passed | 234 |
+|---|---|
+| Total tests | 411 |
+| Passed | 411 |
 | Failed | 0 |
-| Errors | 0 |
-| Skipped | 0 |
-| Coverage | 99% |
+| Overall coverage | 99% (2,124 statements, 5 missed) |
+| Coverage on all files added/modified this project | 100% |
 
-### Coverage by module
+### Coverage gaps (all pre-existing, unrelated to this project's changes)
 
-| Module | Coverage | Missing |
-|--------|----------|---------|
-| app/models.py | 100% | - |
-| app/schemas.py | 100% | - |
-| app/services/*.py | 100% | - |
-| app/repositories/*.py | 100% | - |
-| app/routers/billing.py | 100% | - |
-| app/routers/purchases.py | 100% | - |
-| app/routers/inventory.py | 100% | - |
-| app/routers/auth.py | 78% | logout endpoint (lines 41-46) |
-| app/auth.py | 94% | delete_session (line 27) |
-| app/database.py | 71% | get_db generator (lines 17-21, overridden in tests) |
-| app/utils.py | 97% | _three n==0 early return (line 17) |
+| Module | Coverage | Missing | Why |
+|---|---|---|---|
+| `app/database.py` | 71% | `get_db()` generator body | Tests override this dependency directly; the generator itself never runs under test |
+| `app/utils.py` | 97% | One early-return branch in `_three()` | Cosmetic; the branch is unreachable via any value `amount_in_words` is ever called with in practice |
 
-## Critical Defects (Severity: Critical)
+### Test suite by domain
 
-### DEF-001: Template path miscalculation in billing and purchase print endpoints
+| File | What it covers |
+|---|---|
+| `test_inventory.py` | Item CRUD, stock ledger, opening stock, manual adjustments |
+| `test_billing.py` | Bill creation/cancellation, GST calculation, duplicate-line stock validation |
+| `test_payments.py` | Partial/full payment, void, overdue derivation |
+| `test_purchases.py` | Purchase (goods receipt) creation/cancellation, stock ledger reconciliation |
+| `test_purchase_orders.py` | PO lifecycle, partial/full receipt, over-receipt rejection, receipt-cancellation reversal |
+| `test_sales_returns.py` | Credit notes, duplicate-line aggregation, void, immutability of the original bill |
+| `test_purchase_returns.py` | Debit notes, dual stock/line aggregation, void |
+| `test_money_precision.py` | Decimal vs float regression cases, JSON wire-format contract |
+| `test_dashboard.py` | Cross-domain aggregation, alert generation |
+| `test_rbac_and_audit.py` | Login/logout trail, role enforcement, audit content correctness for every domain |
+| `test_security_module.py` | Password hashing correctness |
+| `test_customers.py`, `test_suppliers.py`, `test_categories.py`, `test_units.py` | Standard CRUD + duplicate-detection rules |
+| `test_auth.py`, `test_security.py` | Session auth, internal-key auth |
+| `test_utils.py` | Amount-in-words (Indian numbering) |
 
-- **Severity**: Critical
-- **Component**: `app/routers/billing.py`, `app/routers/purchases.py`
-- **Description**: The template directory path was computed incorrectly. The code used `os.path.dirname(os.path.dirname(os.path.abspath(__file__)))` which resolves to the `app/` directory, then joined `app/templates` -- creating `app/app/templates` (double `app` prefix).
-- **Steps to reproduce**: Call `GET /api/bills/{id}/print` without the `BASE_DIR` environment variable set.
-- **Expected behaviour**: Returns HTML invoice/purchase print page.
-- **Actual behaviour**: `jinja2.exceptions.TemplateNotFound: print_invoice.html` (500 error).
-- **Root cause**: Off-by-one in directory traversal. Needed three levels of `dirname()` from `app/routers/billing.py` to reach the repo root, but only used two.
-- **Fix applied**: Changed `os.path.dirname(os.path.dirname(...))` to `os.path.dirname(os.path.dirname(os.path.dirname(...)))` in both `app/routers/billing.py` and `app/routers/purchases.py`.
-- **Regression test**: `test_bill_print_endpoint`, `test_purchase_print_endpoint`
+## Defects found and fixed during this project
 
-## Medium Defects
+### DEF-101 (Critical): Duplicate line items bypassed stock validation
 
-### DEF-002: amount_in_words produces malformed output for paise-only amounts
+- **Where**: `BillService.create()`
+- **What**: Two lines in one bill referencing the same item were validated independently against the item's *starting* quantity, since stock was only deducted after all lines passed validation. Stock=5 with two lines of qty 4 each: both lines individually pass (`4 <= 5`), then both deductions apply — stock ends at -3.
+- **How it was found**: Traced deliberately while reviewing the billing service's structure against the "aggregate before validating" principle — then reproduced with a scripted repro before writing the fix, confirming stock actually went negative.
+- **Fix**: Requested quantities are now aggregated per item *before* any validation runs; the combined total is checked against available stock in one pass.
+- **Regression tests**: `test_create_bill_aggregates_duplicate_lines_for_stock_check`, `test_create_bill_allows_duplicate_lines_within_combined_stock` (`test_billing.py`)
+- **Follow-through**: The same aggregation discipline was applied proactively (not reactively) to purchase returns, which have an even sharper version of the same risk — one line's cap and a separate item-level stock cap both need aggregating independently.
 
-- **Severity**: Medium
-- **Component**: `app/utils.py`
-- **Description**: When the amount has zero rupees but non-zero paise (e.g., 0.25), the function returned `' Rupees and Twenty Five Paise Only'` -- with a leading space and the misleading word "Rupees".
-- **Steps to reproduce**: Call `amount_in_words(0.25)`.
-- **Expected behaviour**: `"Twenty Five Paise Only"`
-- **Actual behaviour (before fix)**: `" Rupees and Twenty Five Paise Only"`
-- **Root cause**: When `rupees == 0` and `paise > 0`, the `parts` list is empty. Joining empty parts produces `''`, then appending `' Rupees'` creates `' Rupees'`. The function only checked for the `rupees == 0 AND paise == 0` case, not the paise-only case.
-- **Fix applied**: Added conditional: if `parts` is non-empty, format as `"... Rupees"`, else format as `"... Paise"` only.
-- **Regression tests**: `test_paise_only_defect`, `test_paise_only_one_paisa`, `test_paise_only_ninety_nine`
+### DEF-102 (High): SQLite/Decimal round-trip silently reintroduced float rounding error
 
-## Low Defects
+- **Where**: `app/money.py` (discovered while migrating money fields from `float` to `Decimal`)
+- **What**: SQLite has no native `Decimal` storage — a `Numeric` column's value still passes through a float at the SQLite layer regardless of the declared scale, and SQLAlchemy's sqlite dialect re-derives the `Decimal` on *read* via Python's `round(float_value, scale)`. A price entered as `2.675` was stored correctly but came back from the database as `2.67`, not the correctly-rounded `2.68` — the exact class of error the Decimal migration existed to eliminate.
+- **How it was found**: Caught live, not by the test suite — creating a test item with a 3-decimal price through the actual running server (not the in-memory test database) and inspecting the response. This is a case where testing against the real database engine, not just the test harness's in-memory SQLite, mattered: the bug is specific to how SQLite (any SQLite, but the behavior wasn't exercised by the existing test fixtures' values, which all happened to already be exactly 2dp).
+- **Fix**: The `Money` Pydantic type now quantizes to 2 decimal places at the moment a value is validated — before it can ever reach the database with excess precision. The lossy round-trip becomes a no-op on an already-clean value.
+- **Regression tests**: `test_money_type_quantizes_excess_precision_on_input`, `test_item_price_survives_sqlite_round_trip_with_excess_precision` (`test_money_precision.py`)
 
-### DEF-003: "One Rupees" uses plural instead of singular
+### DEF-103 (Medium): Backfilled historical payments were dated "today" instead of their actual date
 
-- **Severity**: Low (cosmetic)
-- **Component**: `app/utils.py`
-- **Description**: `amount_in_words(1)` returns `"One Rupees Only"` instead of `"One Rupee Only"`. Grammatically, singular amounts should use "Rupee".
-- **Fix applied**: Not fixed -- cosmetic issue, low priority.
-- **Regression test**: `test_one_rupee_grammar` (documents current behaviour)
+- **Where**: `migrate_bill_payments.py`
+- **What**: The one-time script that backfills a `Payment` record for bills created before payment tracking existed left `payment_date` at its column default (`now()`) instead of the bill's own `created_at`. This had no visible effect until the dashboard's "payments received today" figure was built — at which point every historical backfilled payment would have shown up as "received today," on whatever day the script happened to be run.
+- **How it was found**: Live testing of the dashboard feature against the real local database (which had already had the backfill script run against it in an earlier phase) — the "today" figure was implausibly large, tracing back to the backfill's payment dates.
+- **Fix**: The script now sets `payment_date=bill.created_at` explicitly. The three already-backfilled rows in the local database were corrected directly (only `payment_date`; `created_at`, the row's own audit timestamp, was left untouched).
+- **Regression test**: None added — this is a one-time migration script, not part of the tested application import graph (consistent with how the project's other migration scripts are handled). The fix was verified by re-running the corrected script and re-checking the dashboard figure live.
 
-## Business Rules Requiring Customer Confirmation
+### Historical defects (from the original pre-transformation audit, still resolved)
 
-### AMB-001: Purchase cancellation when stock has been sold
+| ID | Description | Status |
+|---|---|---|
+| DEF-001 | Print endpoints used the wrong template directory (missing one `dirname()` level) | Fixed, regression-tested |
+| DEF-002 | `amount_in_words` produced malformed output for paise-only amounts (e.g. ₹0.25) | Fixed, regression-tested |
+| DEF-003 | "One Rupees" instead of "One Rupee" (grammar) | Not fixed — cosmetic, documented as accepted |
 
-- **Current behaviour**: When cancelling a purchase, if the purchased stock has already been sold (item quantity is now less than the purchased quantity), the cancellation floors the stock at 0 using `max(0, qty - purchased_qty)`.
-- **Question**: Should the system prevent cancellation if stock has been consumed? Should it require a warning/confirmation? Should it allow negative stock?
-- **Test**: `test_cancel_purchase_after_stock_sold`, `test_cancel_purchase_stock_floor_at_zero`
+## Business rules resolved (historical)
 
-### AMB-002: Customer name uniqueness
+The original audit flagged four business-rule ambiguities rather than inventing answers. All four were resolved in earlier phases of this project and are documented in full in `BUSINESS_RULES.md`:
 
-- **Current behaviour**: No uniqueness constraint on customer names. Multiple customers can have identical names.
-- **Question**: Should customer names be unique? Or is this intentional (e.g., franchise locations with the same business name)?
-- **Test**: `test_create_customer_duplicate_name_allowed`
+| ID | Question | Resolution |
+|---|---|---|
+| AMB-001 | Purchase cancellation when stock already consumed | Blocked, not floored at zero — surfaces the exact shortfall |
+| AMB-002 | Customer name uniqueness | Names may repeat; identical name+phone+address is blocked as a likely duplicate entry |
+| AMB-003 | Bill/purchase cancellation referencing a deleted item | Warns by name and quantity rather than silently skipping |
+| AMB-004 | Price-tier enforcement on bills | Soft warning on mismatch, never a hard block |
 
-### AMB-003: Bill cancellation restores stock unconditionally
+## Live-verification methodology
 
-- **Current behaviour**: Cancelling a bill always restores stock, even if the item has been deleted or modified. If the item has been deleted, the stock restoration is silently skipped (the `items_by_id.get()` returns None).
-- **Question**: Should cancelled bills that reference deleted items raise an error or a warning?
+Every phase of this project's work was verified against the real running server and the real local SQLite database — not only the automated test suite's in-memory fixtures — before being committed. This practice directly caught DEF-102 and DEF-103 above, neither of which the automated test suite's existing fixture data would have surfaced (the fixtures happened to use values that don't trigger either bug). The practice, followed for every phase:
 
-### AMB-004: No price tier enforcement on bills
+1. Run the full test suite and `python -m compileall`.
+2. Start `uvicorn` against the actual `inventory.db`.
+3. Exercise the new feature through real HTTP requests with the actual admin session.
+4. Inspect the resulting rows directly via `sqlite3`.
+5. Clean up any test data created this way, then diff the database file against the last commit to confirm no pre-existing rows were altered.
 
-- **Current behaviour**: The `unit_price` on a bill is provided by the caller and not validated against the item's price tiers (wholesale_price, dealer_price, selling_price). A bill can be created with any price regardless of customer type.
-- **Question**: Should the API enforce that wholesalers get wholesale_price, dealers get dealer_price, and retailers get selling_price?
+This is slower than trusting the test suite alone, and is the reason this report can say "no known correctness bugs remain open" rather than "no failing tests."
 
-## Security Findings
+## Security findings
 
 | ID | Finding | Severity | Status |
-|----|---------|----------|--------|
-| SEC-001 | SQL injection protected by ORM | N/A | Confirmed safe -- SQLAlchemy parameterises all queries |
-| SEC-002 | XSS payloads stored as-is in API layer | Medium | No server-side sanitisation. Risk depends on frontend template escaping (Jinja2 auto-escapes by default). |
-| SEC-003 | Hardcoded credentials in source code | Medium | `app/auth.py` has `_USERNAME = "admin"` and password hash for "skgifts". Should use env vars. |
-| SEC-004 | Session tokens stored in-memory | Low | Sessions are lost on server restart. Acceptable for single-server deployment but not for multi-instance. |
-| SEC-005 | No CSRF protection | Low | POST /login uses form data without CSRF token. Acceptable for internal app. |
-| SEC-006 | Auth middleware correctly blocks unauthenticated access | Pass | Confirmed: all API endpoints redirect to /login without valid session or internal key. |
+|---|---|---|---|
+| SEC-001 | SQL injection | N/A | Not applicable — SQLAlchemy parameterizes all queries |
+| SEC-002 | XSS via stored user input | Low | Jinja2 auto-escapes by default in the two server-rendered templates (login, print views); the main UI reads API responses into `innerHTML` in a few places without escaping, which is a latent risk if a name/reason field is ever rendered without sanitization — not currently exploited, not yet hardened |
+| SEC-003 | Hardcoded credentials | — | **Resolved.** Replaced with a real `User` table, salted PBKDF2 password hashing, and role field. A default admin account is still seeded with a known password for lockout-safety on first deploy — see `BUSINESS_RULES.md` — but it is now a real, changeable credential, not a code constant |
+| SEC-004 | Session tokens stored in-memory | Low | Still true — sessions are lost on restart and don't work across multiple server instances. Acceptable for the current single-instance deployment; flagged as an open question in `BUSINESS_RULES.md` |
+| SEC-005 | No CSRF protection on login | Low | Unchanged; acceptable for a single-tenant internal app |
+| SEC-006 | Auth middleware blocks unauthenticated access | Pass | Confirmed across every phase added since the original audit |
+| SEC-007 | Role-based access control | — | **Added.** Deliberately minimal — see `BUSINESS_RULES.md` for why only the audit log is role-gated today |
+| SEC-008 | Passwords never appear in the audit trail | Pass | Structural guarantee — audit snapshots are built from response schemas that never include `password_hash` |
 
-## Data Integrity Findings
-
-| ID | Finding | Status |
-|----|---------|--------|
-| DI-001 | Bill creation is atomic -- if any item fails validation, no stock is deducted | Confirmed |
-| DI-002 | Purchase creation is atomic -- if any item_id is invalid, no stock is added | Confirmed |
-| DI-003 | Bill cancellation restores stock for all items | Confirmed |
-| DI-004 | Purchase cancellation deducts stock with floor at 0 | Confirmed (see AMB-001) |
-| DI-005 | Duplicate item names prevented at service layer | Confirmed |
-| DI-006 | Duplicate supplier names prevented at service layer | Confirmed |
-| DI-007 | Duplicate category/unit names prevented at service layer | Confirmed |
-| DI-008 | Customer names are NOT unique -- duplicates allowed | Documented (see AMB-002) |
-
-## Money / Financial Calculation Findings
+## Data integrity findings
 
 | ID | Finding | Status |
-|----|---------|--------|
-| FIN-001 | GST calculation: taxable = qty * unit_price, igst = taxable * gst_rate / 100 | Correct |
-| FIN-002 | Each line item rounded to 2 decimal places | Correct |
-| FIN-003 | Bill totals are sum of line amounts, then rounded to 2dp | Correct |
-| FIN-004 | Zero GST bills compute correctly (igst = 0) | Correct |
-| FIN-005 | Fractional prices handled correctly (e.g., qty=7, price=13.33) | Correct |
-| FIN-006 | Using Python float (not Decimal) for money -- acceptable precision for small to medium amounts | Documented risk |
-| FIN-007 | Dashboard total_value uses cost_price * quantity, not selling_price | Correct |
-| FIN-008 | HSN summary in print view aggregates by (hsn_code, gst_rate) | Correct |
+|---|---|---|
+| DI-001 | Bill creation is atomic; duplicate lines are aggregated before stock validation | Confirmed (was DEF-101, now fixed) |
+| DI-002 | Purchase creation is atomic | Confirmed |
+| DI-003 | Bill cancellation restores stock, warns on deleted items | Confirmed |
+| DI-004 | Purchase cancellation is blocked, not floored, when stock already consumed | Confirmed (AMB-001 resolved) |
+| DI-005 | Stock ledger reconciles with `Item.quantity` for every movement type | Confirmed, explicitly tested (`test_stock_ledger_reconciles_with_current_quantity`) |
+| DI-006 | A sales/purchase return never mutates its parent document | Confirmed, explicitly tested |
+| DI-007 | Cancelling a return is blocked if the affected stock has moved again | Confirmed |
+| DI-008 | Purchase order receiving is capped per-line and cannot exceed the order | Confirmed |
+| DI-009 | Duplicate item/supplier/category/unit names are prevented | Confirmed |
+| DI-010 | Customer names are intentionally not unique (AMB-002) | Confirmed, documented |
 
-## Remaining Risks
+## Money / financial calculation findings
 
-1. **Float vs Decimal**: Financial calculations use Python `float` and SQLite `REAL`. For amounts up to ~10 crore, this is acceptable. For very large amounts or high-precision requirements, consider migrating to `Decimal` types.
+| ID | Finding | Status |
+|---|---|---|
+| FIN-001 | All monetary and GST-rate fields use `Decimal`, not `float` | **Resolved this project** — previously flagged as a documented risk |
+| FIN-002 | GST calculation centralized in one module, used by billing and print alike | Confirmed |
+| FIN-003 | Line-level rounding, then document-level rounding, is consistent everywhere | Confirmed |
+| FIN-004 | SQLite/Decimal round-trip precision bug | **Found and fixed this project** (DEF-102) |
+| FIN-005 | Fractional prices and quantities compute correctly | Confirmed, including the specific 2.675 → 2.68 regression case |
+| FIN-006 | Dashboard aggregates (stock value, today's totals) still use SQL-level `SUM`/`float()` casts rather than full Decimal arithmetic | Documented, accepted — these are display-only rough figures, not stored transactional amounts; the same trade-off the original dashboard stats already made |
 
-2. **No audit trail**: There is no history/log of who created or cancelled bills/purchases. Consider adding an audit log table.
+## Remaining risks
 
-3. **No rate limiting**: API endpoints have no rate limiting. In a public deployment, this could be exploited.
+1. **No true interstate GST support.** Every sale is computed and displayed as intrastate; see `BUSINESS_RULES.md`.
+2. **In-memory sessions.** Lost on restart, don't scale to multiple instances.
+3. **Refund/credit settlement is manual.** The app tracks the fact and amount of a cancellation or return; it does not move money.
+4. **RBAC has no permission matrix beyond the audit log.** Roles exist; almost nothing checks them yet.
+5. **Frontend is one ~4,800-line file with no build step or type checking** — this has been manageable so far but is a growing maintenance cost.
+6. **No automated frontend tests.** All UI changes in this project were verified manually (live server + HTML well-formedness checks + JS syntax checks), not via a browser-automation test suite.
+7. **Migration scripts are manual, one-time, and unversioned** — there is no tracked history of which environment has had which backfill run, beyond what's recorded in project memory/commit messages.
 
-4. **Hardcoded credentials**: Production deployments should use environment variables for admin credentials, not hardcoded values.
+## Recommended next steps
 
-5. **No input sanitisation for XSS**: The API stores user input as-is. While Jinja2 auto-escapes in templates, any future non-Jinja rendering (e.g., PDF generation, email templates) could be vulnerable.
+1. If multi-staff use becomes real, design an actual permission matrix before enabling non-admin roles for real work.
+2. If the business ever sells interstate, add customer/company state fields and a real intrastate/interstate GST rule.
+3. Consider a shared session store (even a simple DB table) before running more than one server instance.
+4. Consider splitting `index.html` if the UI keeps growing — no immediate need, but the trend line is worth watching.
+5. Add browser-automation tests (e.g., Playwright) if frontend regressions ever start slipping through manual verification.
+6. Sanitize or escape any user-supplied text (item names, return reasons, etc.) before it's ever rendered via `innerHTML`, as defense in depth even though nothing currently exploits its absence.
 
-## Recommended Next Steps
-
-1. Move admin credentials to environment variables
-2. Decide on AMB-001 through AMB-004 business rules
-3. Add audit logging for bill/purchase creation and cancellation
-4. Consider adding CSRF tokens to the login form
-5. Add rate limiting middleware for production deployment
-6. Consider migrating Float columns to Decimal for financial data
-7. Add input sanitisation or content-security-policy headers
-
-## Final Test Output
+## Final test output
 
 ```
-234 passed, 17 warnings in 2.35s
-
---------- coverage: platform darwin, python 3.12.12-final-0 ----------
-Name                           Stmts   Miss  Cover   Missing
-------------------------------------------------------------
-app/__init__.py                    0      0   100%
-app/auth.py                       16      1    94%   27
-app/database.py                   14      4    71%   17-21
-app/models.py                     98      0   100%
-app/repositories/__init__.py       0      0   100%
-app/repositories/base.py          20      0   100%
-app/repositories/bill.py          12      0   100%
-app/repositories/category.py      11      0   100%
-app/repositories/customer.py      12      0   100%
-app/repositories/item.py          24      0   100%
-app/repositories/purchase.py      12      0   100%
-app/repositories/supplier.py       9      0   100%
-app/repositories/unit.py          11      0   100%
-app/routers/__init__.py            0      0   100%
-app/routers/auth.py               27      6    78%   41-46
-app/routers/billing.py            43      0   100%
-app/routers/categories.py         24      0   100%
-app/routers/customers.py          24      0   100%
-app/routers/inventory.py          31      0   100%
-app/routers/purchases.py          33      0   100%
-app/routers/suppliers.py          24      0   100%
-app/routers/units.py              24      0   100%
-app/schemas.py                   179      0   100%
-app/services/__init__.py           0      0   100%
-app/services/bill.py              60      0   100%
-app/services/category.py          29      0   100%
-app/services/customer.py          29      0   100%
-app/services/unit.py              29      0   100%
-app/services/item.py              41      0   100%
-app/services/purchase.py          51      0   100%
-app/services/supplier.py          30      0   100%
-app/utils.py                      36      1    97%   17
-------------------------------------------------------------
-TOTAL                            953     12    99%
+Name                                  Stmts   Miss  Cover   Missing
+-------------------------------------------------------------------
+app/__init__.py                           0      0   100%
+app/audit.py                              7      0   100%
+app/auth.py                              36      0   100%
+app/database.py                          14      4    71%   17-21
+app/models.py                           238      0   100%
+app/money.py                              8      0   100%
+app/repositories/__init__.py              0      0   100%
+app/repositories/audit.py                12      0   100%
+app/repositories/base.py                 20      0   100%
+app/repositories/bill.py                 27      0   100%
+app/repositories/category.py             11      0   100%
+app/repositories/customer.py             21      0   100%
+app/repositories/item.py                 33      0   100%
+app/repositories/payment.py              13      0   100%
+app/repositories/purchase.py             20      0   100%
+app/repositories/purchase_order.py       12      0   100%
+app/repositories/purchase_return.py      12      0   100%
+app/repositories/sales_return.py         12      0   100%
+app/repositories/supplier.py              9      0   100%
+app/repositories/unit.py                 11      0   100%
+app/repositories/user.py                 11      0   100%
+app/routers/__init__.py                   0      0   100%
+app/routers/audit_log.py                 14      0   100%
+app/routers/auth.py                      39      0   100%
+app/routers/billing.py                   94      0   100%
+app/routers/categories.py                24      0   100%
+app/routers/customers.py                 33      0   100%
+app/routers/dashboard.py                 15      0   100%
+app/routers/inventory.py                 46      0   100%
+app/routers/purchase_orders.py           34      0   100%
+app/routers/purchases.py                 63      0   100%
+app/routers/suppliers.py                 33      0   100%
+app/routers/units.py                     24      0   100%
+app/routers/users.py                     30      0   100%
+app/schemas.py                          381      0   100%
+app/security.py                          18      0   100%
+app/services/__init__.py                  0      0   100%
+app/services/audit.py                     8      0   100%
+app/services/bill.py                    128      0   100%
+app/services/category.py                 29      0   100%
+app/services/customer.py                 37      0   100%
+app/services/dashboard.py                28      0   100%
+app/services/item.py                     56      0   100%
+app/services/purchase.py                103      0   100%
+app/services/purchase_order.py           52      0   100%
+app/services/purchase_return.py          84      0   100%
+app/services/sales_return.py             88      0   100%
+app/services/supplier.py                 30      0   100%
+app/services/tax.py                      10      0   100%
+app/services/unit.py                     29      0   100%
+app/services/user.py                     31      0   100%
+app/utils.py                             36      1    97%   17
+-------------------------------------------------------------------
+TOTAL                                  2124      5    99%
+411 passed, 49 warnings in 31.66s
 ```

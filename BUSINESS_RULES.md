@@ -1,0 +1,68 @@
+# Business Rules
+
+This document exists because a real business system encodes hundreds of small decisions — how to round, what to block, what to allow with a warning, what happens when two things happen at once. Where the underlying spec for this project left a rule ambiguous, the rule below says so explicitly and explains what was chosen and why, rather than presenting an invented assumption as settled fact. If a rule here turns out to be wrong for how this business actually operates, it should be treated as a decision to revisit, not a bug to route around silently.
+
+## Stock
+
+- **Stock can never go negative.** Enforced at the point of every mutation (sale, purchase cancellation reversal, manual adjustment). `ItemService.update_stock()` and `BillService.create()` both reject a change that would take `quantity` below zero.
+- **Every stock change is ledgered.** `StockMovement` records `quantity_before`/`quantity_after` for every sale, sale cancellation, sales return, purchase, purchase cancellation, purchase return, manual adjustment, and opening stock — with a reference back to the document that caused it. `Item.quantity` is a cache of the ledger's running total, not the source of truth.
+- **Duplicate line items in one transaction are aggregated before validating stock, not validated line-by-line.** This was a real bug, found and fixed: a bill with two lines for the same item (e.g., qty 4 + qty 4 against 5 in stock) was previously validated independently per line, so both passed and stock went negative. The fix — aggregate requested quantity per item first, then validate the combined total — was applied to bill creation, and the same class of check (aggregate by the thing that has a finite pool, separately from the thing being capped per-line) was built into purchase returns from the start: a purchase return validates the per-line "not more than was received" cap *and*, separately, aggregates by underlying item to make sure a return spanning two lines of the same item doesn't ask for more than is currently on the shelf.
+- **Editing an item's quantity directly (via the edit form) is still ledgered.** It's logged as an `ADJUSTMENT` movement, same as the dedicated stock-adjustment endpoint — there is no way to change `quantity` that bypasses the ledger.
+
+## Money
+
+- **All money is `Decimal`, quantized to 2 decimal places at the moment it enters the system** (see `ARCHITECTURE.md` for why this specifically has to happen at the Pydantic boundary and not just "somewhere"). No monetary or GST-rate field should ever be a `float`.
+- **Rounding is per-line, then summed, then rounded again for the document total** — this was the pre-existing behavior and was preserved rather than redesigned, including in the printed invoice's CGST/SGST split, which halves an already-rounded tax figure and doubles it back (so a printed total can, in rare odd-cent cases, differ by a paisa from a straight recomputation — this is documented, not hidden, in `app/services/tax.py`).
+
+## GST / Tax
+
+- **Every sale is treated as intrastate.** There is no customer or company "state" field in the data model, so there is no way to *detect* an interstate sale. The printed invoice always splits the calculated tax into CGST + SGST halves for display, and the stored `igst_amount` column name is a historical artifact (it holds the combined tax figure, not a true IGST-only amount). **This was not invented for this phase — it reflects the app's pre-existing print behavior** and is documented rather than silently carried forward. If this business ever needs genuine interstate IGST handling, it requires adding customer/company state fields and a real intrastate/interstate decision rule first; that is a data-model change for the business owner to request, not something to infer from usage patterns.
+- **GST calculation lives in exactly one place**: `app/services/tax.py`. Every line-level tax figure (bill creation, purchase-return line totals via unit cost, printed invoice tax breakup) is computed through it — no router, service, or template duplicates the formula.
+- **HSN and GST rate are snapshotted onto the bill line at sale time**, not looked up live from the item — an invoice keeps showing what was actually charged even if the item's rate changes later.
+
+## Sales lifecycle
+
+- **A bill defaults to fully paid at creation** unless the caller explicitly passes a smaller `amount_paid`. This is a deliberate backward-compatibility choice: the app's original behavior (before payment tracking existed) was cash-and-carry, and every existing caller/test assumed full payment on creation. Passing a smaller amount (including zero) records a partial or fully credit sale instead.
+- **Payment status** (`unpaid` / `partially_paid` / `paid` / `overdue` / `cancelled`) is derived at read time from the stored `payment_state` plus an optional `due_date` — never cached as a stale value. A bill only becomes `overdue` if a `due_date` was explicitly set on it; **no due-date policy (net-15, net-30, etc.) is invented or applied automatically.**
+- **Cancelling a bill does not touch its payment records.** If money was recorded against it, cancellation adds a warning ("this invoice had ₹X recorded as paid — cancelling does not automatically refund or reverse this payment") rather than silently reversing `amount_paid`. Whether that money gets refunded in cash, credited elsewhere, or written off is a decision for the business owner, not something this app automates.
+- **A sales return (credit note) never modifies the original bill.** `total_amount`, `amount_paid`, and `payment_state` on the `Bill` are exactly what they were before the return. The return is its own record with its own computed value (from the *original* line's price and GST rate, not current pricing), and it only affects stock. How the credited amount gets settled is, again, left to the business owner — same reasoning as bill cancellation. A return is blocked against an already-cancelled bill.
+- **The soft price-tier check is a warning, not a block.** A bill line can be billed at any price regardless of the customer's type (retailer/dealer/wholesaler); if the price differs from that tier's standard price on the item, the response includes a warning, but the bill is still created. This was a deliberate choice (AMB-004, resolved in an earlier phase of this project) — retail businesses routinely give one-off discounts or premiums, and hard-blocking would get in the way of a legitimate sale.
+
+## Purchasing
+
+- **A Purchase Order never touches stock.** Creating or confirming one is a paper commitment only. Its lifecycle is `DRAFT → CONFIRMED → PARTIALLY_RECEIVED → RECEIVED`, or `DRAFT`/`CONFIRMED → CANCELLED`. A PO cannot be cancelled once anything has been received against it.
+- **Stock only changes on a goods receipt** (`PurchaseBill`) — either a "direct receipt" with no PO reference (the original simplified flow, fully preserved), or a receipt that references a `CONFIRMED`/`PARTIALLY_RECEIVED` PO. A receipt cannot be recorded against a `DRAFT` PO (nothing's been committed to the supplier yet) or a cancelled one.
+- **Receiving more than what remains on a PO line is rejected**, with the exact shortfall stated. A line item the receipt includes that *isn't* on the original PO at all is still accepted — a supplier substitution or an extra item in the same shipment shouldn't block receiving the rest of a real delivery — but it's simply not tracked against any PO line.
+- **Purchase cancellation is blocked once the purchased stock has been consumed** (sold, or otherwise reduced below what was purchased) — resolved in an earlier phase of this project (AMB-001) specifically to avoid the alternative of silently flooring the reversal at zero, which would hide a real data-integrity problem instead of surfacing it.
+- **A purchase return (debit note) never modifies the original goods receipt.** Symmetric to sales returns: it's a standalone record, computed from the original purchase line's cost, that decreases stock — and is only possible while that stock is still physically on hand. Two aggregation checks apply simultaneously: the per-line cap (can't return more than was received on that line) and a separate per-item stock check (can't return more of an item than currently exists, even if it spans two lines of the same purchase).
+- **Cancelling a receipt reverses whatever PO tracking it had contributed** (its `quantity_received` and the PO's derived status), and cancelling a return reverses its stock and quantity-returned tracking — both are blocked if the relevant stock has moved again since (mirroring the purchase-cancellation guard above).
+
+## Reversibility
+
+Every transactional document in this system follows the same rule: **cancel, don't delete.** A cancelled/voided record stays in the database with its full history intact — it's flagged, not erased. This applies to bills, purchase bills, purchase orders, payments, sales returns, and purchase returns. The one recurring exception to *automatic* reversal is money already exchanged (payments, credit/debit note settlement) — the physical/stock side of a transaction reverses automatically on cancellation where it's safe to do so; the financial settlement side surfaces a warning and leaves the actual refund/adjustment action to a person, because that's a business decision this app has no way to make correctly on its own.
+
+## Customers and suppliers
+
+- **Customer names are not required to be unique** — a business may legitimately have two customers with the same name. What *is* blocked is an exact duplicate of name + phone + address together, which almost certainly indicates an accidental double-entry of the same customer (resolved in an earlier phase, AMB-002).
+- **Deleting an item does not retroactively break historical documents.** A bill/purchase/return line that referenced a since-deleted item keeps its snapshotted name, price, and quantities; operations that would otherwise adjust that item's live stock (bill cancellation, purchase cancellation, returns) instead surface a warning naming the item and the quantity that couldn't be applied, so the business can fix the discrepancy manually rather than have it silently disappear (resolved in an earlier phase, AMB-003, and extended to every new feature that touches stock since).
+
+## Users and roles
+
+- **RBAC enforcement is deliberately minimal.** The system supports seven roles (`ADMIN`, `MANAGER`, `SALES`, `PURCHASE`, `INVENTORY`, `ACCOUNTANT`, `VIEWER`), but as of this writing the only endpoint that actually checks a role is the audit log viewer (admin-only). This is not an oversight — retrofitting permission checks across every endpoint for what is currently a single-admin business would add friction with no present benefit. The role infrastructure exists so that a real permission matrix can be introduced later, deliberately, if and when this business actually has multiple staff members who need different access.
+- **The default admin account is credential-compatible with the app's original hardcoded login.** On first startup, if no users exist, one is seeded with username `admin` and the same password the app always used (`skgifts`), unless a `DEFAULT_ADMIN_PASSWORD` environment variable is set. This was a deliberate choice to guarantee zero lockout risk when this feature was introduced to a live deployment — not an endorsement of that password for ongoing use. It should be changed via Settings once logged in.
+- **A disabled user is rejected at login, not deleted** — their audit history (and the `username` string already recorded in past `AuditLog` rows) stays intact.
+
+## Audit trail
+
+- **Passwords are never written to the audit log**, structurally — `old_value`/`new_value` are always built from the same API response schemas already used elsewhere, and no schema for a user ever includes `password_hash`.
+- **A failed login attempt is logged with the attempted username, never the attempted password.**
+- **The audit log is a best-effort secondary record**, written just after the primary business transaction has already committed. It is not guaranteed atomic with that transaction (see `ARCHITECTURE.md`) — an audit entry could theoretically be missed if the process crashed in the narrow window between the two writes. This has not been observed and is considered an acceptable trade-off for a small business system.
+
+## Open questions (not decided, intentionally)
+
+These are real ambiguities the underlying spec for this project explicitly warned against inventing an answer to. Each is documented here so a future session (or the business owner) can make the call deliberately:
+
+1. **Interstate GST.** If this business ever sells across state lines, it needs a real customer/company state field and an actual intrastate-vs-interstate rule — not an inferred one.
+2. **Refund/credit settlement mechanics.** When a bill is cancelled or a sales return is issued after money changed hands, this app tells you the amount at stake and stops there. Whether that becomes a cash refund, a credit against a future invoice, or something else is entirely manual today.
+3. **Multi-staff permissions.** The role field and `require_role()` mechanism exist, but no permission matrix beyond "audit log is admin-only" has been defined. If staff accounts are actually going to be used, someone needs to decide what each role can and can't do.
+4. **Session persistence across restarts/instances.** Sessions live in an in-memory dict and are lost on every deploy or restart. Fine for one person on one Railway instance; would need real work (a shared session store) before this could run on more than one server process.
