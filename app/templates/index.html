@@ -21,6 +21,8 @@
     --accent-dim: rgba(0,150,107,0.1);
     --warn: #e04f1a;
     --warn-dim: rgba(224,79,26,0.1);
+    --info: #1a6fc4;
+    --info-dim: rgba(26,111,196,0.1);
     --text: #0a0c0d;
     --text-muted: #4a5568;
   }
@@ -34,6 +36,8 @@
     --accent-dim: rgba(196,81,106,0.12);
     --warn: #c45c1a;
     --warn-dim: rgba(196,92,26,0.12);
+    --info: #3a6ea8;
+    --info-dim: rgba(58,110,168,0.12);
     --text: #2d1f1a;
     --text-muted: #9a7b72;
   }
@@ -47,6 +51,8 @@
     --accent-dim: rgba(0,229,160,0.12);
     --warn: #ff6b35;
     --warn-dim: rgba(255,107,53,0.12);
+    --info: #4a9eff;
+    --info-dim: rgba(74,158,255,0.12);
     --text: #ffffff;
     --text-muted: #a0a8ab;
   }
@@ -898,6 +904,9 @@
   }
   .status-badge.paid { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
   .status-badge.cancelled { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
+  .status-badge.unpaid { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
+  .status-badge.overdue { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
+  .status-badge.partially_paid { background: var(--info-dim); color: var(--info); border: 1px solid var(--info); }
 
   .bill-line-item {
     display: grid;
@@ -1780,6 +1789,37 @@
           <span class="bill-grand-total" id="bill-grand-total">₹0.00</span>
         </div>
       </div>
+      <hr class="divider">
+      <div class="form-group" style="margin-bottom:0.5rem;">
+        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-weight:normal;">
+          <input type="checkbox" id="bill-paid-in-full" checked onchange="toggleBillPaymentFields()">
+          Received full payment now
+        </label>
+      </div>
+      <div id="bill-payment-fields" style="display:none;">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Amount Received Now</label>
+            <input type="number" min="0" step="0.01" id="bill-amount-paid" placeholder="0.00">
+          </div>
+          <div class="form-group">
+            <label>Payment Method</label>
+            <select id="bill-payment-method">
+              <option value="cash">Cash</option>
+              <option value="upi">UPI</option>
+              <option value="card">Card</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="cheque">Cheque</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Reference / Txn No.</label>
+          <input type="text" id="bill-payment-reference" placeholder="Optional">
+        </div>
+        <p style="color:var(--text-muted); font-size:0.75rem;">Leave amount at 0 to record this as a fully unpaid credit sale.</p>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('create-bill-modal')">Cancel</button>
@@ -1799,7 +1839,54 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('view-bill-modal')">Close</button>
       <button class="btn btn-stock" onclick="printBill()">PRINT</button>
+      <button class="btn btn-primary" id="record-payment-from-view-btn" onclick="openRecordPayment(viewingBillId)">RECORD PAYMENT</button>
       <button class="btn btn-warn" id="cancel-bill-btn" onclick="cancelCurrentBill()">CANCEL BILL</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECORD PAYMENT MODAL -->
+<div class="modal-overlay" id="record-payment-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Record Payment</div>
+      <button class="modal-close" onclick="closeModal('record-payment-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="payment-bill-id">
+      <p style="text-align:center; color: var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">
+        <strong id="payment-invoice-number" style="color:var(--text)"></strong>
+        &nbsp;|&nbsp; Balance Due: <strong id="payment-balance-due" style="color:var(--warn); font-family:var(--mono)"></strong>
+      </p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Amount *</label>
+          <input type="number" min="0.01" step="0.01" id="payment-amount" placeholder="0.00">
+        </div>
+        <div class="form-group">
+          <label>Method</label>
+          <select id="payment-method">
+            <option value="cash">Cash</option>
+            <option value="upi">UPI</option>
+            <option value="card">Card</option>
+            <option value="bank_transfer">Bank Transfer</option>
+            <option value="cheque">Cheque</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Reference / Txn No.</label>
+        <input type="text" id="payment-reference" placeholder="Optional">
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" id="payment-notes" placeholder="Optional">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('record-payment-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPayment()">RECORD PAYMENT</button>
     </div>
   </div>
 </div>
@@ -2780,16 +2867,23 @@
       const cancelBtn = b.status === 'paid'
         ? `<button class="btn btn-warn" onclick="event.stopPropagation(); quickCancelBill(${b.id})">CANCEL</button>`
         : '';
+      const payBtn = (b.status === 'paid' && b.balance_due > 0)
+        ? `<button class="btn btn-primary" onclick="event.stopPropagation(); openRecordPayment(${b.id})">PAY</button>`
+        : '';
+      const paymentLabel = (b.payment_status || '').replace('_', ' ').toUpperCase();
       return `
         <tr style="cursor:pointer;" onclick="viewBill(${b.id})">
           <td style="font-family:var(--mono); font-size:0.8rem;">${b.invoice_number}</td>
           <td><div class="item-name">${b.customer_name}</div></td>
           <td style="color:var(--text-muted); font-size:0.8rem;">${b.customer_phone || '—'}</td>
           <td style="font-family:var(--mono); font-size:0.8rem; text-align:center;">${b.items.length}</td>
-          <td style="font-family:var(--mono); font-size:0.85rem; color:var(--accent);">₹${b.total_amount.toLocaleString()}</td>
-          <td><span class="status-badge ${b.status}">${b.status}</span></td>
+          <td style="font-family:var(--mono); font-size:0.85rem; color:var(--accent);">
+            ₹${b.total_amount.toLocaleString()}
+            ${b.balance_due > 0 ? `<div style="font-size:0.7rem; color:var(--warn); font-family:var(--mono);">Due ₹${b.balance_due.toLocaleString()}</div>` : ''}
+          </td>
+          <td><span class="status-badge ${b.payment_status}">${paymentLabel}</span></td>
           <td style="color:var(--text-muted); font-size:0.8rem;">${date}</td>
-          <td><div class="actions">${cancelBtn}</div></td>
+          <td><div class="actions">${payBtn}${cancelBtn}</div></td>
         </tr>`;
     }).join('');
   }
@@ -2828,8 +2922,18 @@
     document.getElementById('bill-taxable').textContent = '₹0.00';
     document.getElementById('bill-igst').textContent = '₹0.00';
     document.getElementById('bill-grand-total').textContent = '₹0.00';
+    document.getElementById('bill-paid-in-full').checked = true;
+    document.getElementById('bill-amount-paid').value = '';
+    document.getElementById('bill-payment-method').value = 'cash';
+    document.getElementById('bill-payment-reference').value = '';
+    toggleBillPaymentFields();
     addBillLine();
     document.getElementById('create-bill-modal').classList.add('active');
+  }
+
+  function toggleBillPaymentFields() {
+    const paidInFull = document.getElementById('bill-paid-in-full').checked;
+    document.getElementById('bill-payment-fields').style.display = paidInFull ? 'none' : '';
   }
 
   function addBillLine() {
@@ -2921,16 +3025,26 @@
 
     if (!valid || !lines.length) { showToast('Fill all line items correctly', 'error'); return; }
 
+    const paidInFull = document.getElementById('bill-paid-in-full').checked;
+    const payload = {
+      customer_name: customerName,
+      customer_phone: document.getElementById('bill-customer-phone').value.trim() || null,
+      customer_type: billingCustomerType,
+      items: lines
+    };
+    if (!paidInFull) {
+      const amountPaid = parseFloat(document.getElementById('bill-amount-paid').value);
+      if (isNaN(amountPaid) || amountPaid < 0) { showToast('Enter a valid amount received (or 0)', 'error'); return; }
+      payload.amount_paid = amountPaid;
+      payload.payment_method = document.getElementById('bill-payment-method').value;
+      payload.payment_reference = document.getElementById('bill-payment-reference').value.trim() || null;
+    }
+
     try {
       const res = await fetch('/api/bills', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer_name: customerName,
-          customer_phone: document.getElementById('bill-customer-phone').value.trim() || null,
-          customer_type: billingCustomerType,
-          items: lines
-        })
+        body: JSON.stringify(payload)
       });
       if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error creating bill', 'error'); return; }
       const data = await res.json();
@@ -2952,9 +3066,12 @@
     try {
       const res = await fetch(`/api/bills/${id}`);
       const bill = await res.json();
+      const payments = await (await fetch(`/api/bills/${id}/payments`)).json();
       viewingBillId = bill.id;
       document.getElementById('view-bill-title').textContent = bill.invoice_number;
       document.getElementById('cancel-bill-btn').style.display = bill.status === 'paid' ? '' : 'none';
+      document.getElementById('record-payment-from-view-btn').style.display =
+        (bill.status === 'paid' && bill.balance_due > 0) ? '' : 'none';
 
       const rows = bill.items.map(i => `
         <tr>
@@ -2965,16 +3082,28 @@
           <td style="font-family:var(--mono); color:var(--accent);">₹${i.line_total.toFixed(2)}</td>
         </tr>`).join('');
 
+      const paymentLabel = (bill.payment_status || '').replace('_', ' ').toUpperCase();
+      const paymentRows = payments.map(p => `
+        <tr style="${p.status === 'cancelled' ? 'opacity:0.5; text-decoration:line-through;' : ''}">
+          <td style="font-size:0.75rem; color:var(--text-muted);">${new Date(p.payment_date).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})}</td>
+          <td style="font-size:0.75rem; text-transform:capitalize;">${p.payment_method.replace('_',' ')}</td>
+          <td style="font-family:var(--mono); font-size:0.8rem;">${p.reference_number || '—'}</td>
+          <td style="font-family:var(--mono); color:var(--accent);">₹${p.amount.toFixed(2)}</td>
+          <td>${p.status === 'recorded'
+            ? `<button class="btn btn-ghost" style="padding:0.15rem 0.5rem; font-size:0.65rem;" onclick="cancelPayment(${bill.id}, ${p.id})">VOID</button>`
+            : '<span style="font-size:0.7rem; color:var(--text-muted);">voided</span>'}</td>
+        </tr>`).join('');
+
       document.getElementById('view-bill-body').innerHTML = `
-        <div style="display:flex; gap:2rem; margin-bottom:1rem;">
+        <div style="display:flex; gap:2rem; margin-bottom:1rem; flex-wrap:wrap;">
           <div>
             <div class="stat-label">Customer</div>
             <div style="font-weight:600; margin-top:0.25rem;">${bill.customer_name}</div>
             ${bill.customer_phone ? `<div style="color:var(--text-muted); font-size:0.85rem;">${bill.customer_phone}</div>` : ''}
           </div>
           <div>
-            <div class="stat-label">Status</div>
-            <div style="margin-top:0.25rem;"><span class="status-badge ${bill.status}">${bill.status}</span></div>
+            <div class="stat-label">Payment</div>
+            <div style="margin-top:0.25rem;"><span class="status-badge ${bill.payment_status}">${paymentLabel}</span></div>
           </div>
           <div>
             <div class="stat-label">Date</div>
@@ -2992,7 +3121,20 @@
         <div class="bill-total-row">
           <span style="font-family:var(--mono); font-size:0.7rem; color:var(--text-muted); letter-spacing:1px;">GRAND TOTAL</span>
           <span class="bill-grand-total">₹${bill.total_amount.toLocaleString()}</span>
-        </div>`;
+        </div>
+        <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.75rem; color:var(--text-muted); margin-top:0.35rem;">
+          <span>PAID</span><span style="color:var(--accent);">₹${bill.amount_paid.toFixed(2)}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.75rem; color:var(--text-muted);">
+          <span>BALANCE DUE</span><span style="color:${bill.balance_due > 0 ? 'var(--warn)' : 'var(--accent)'};">₹${bill.balance_due.toFixed(2)}</span>
+        </div>
+        ${payments.length ? `
+          <hr class="divider">
+          <div class="sidebar-title" style="margin-bottom:0.5rem;">Payment History</div>
+          <table class="bill-detail-table">
+            <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Amount</th><th></th></tr></thead>
+            <tbody>${paymentRows}</tbody>
+          </table>` : ''}`;
 
       document.getElementById('view-bill-modal').classList.add('active');
     } catch (e) { showToast('Failed to load bill', 'error'); }
@@ -3009,9 +3151,8 @@
       await loadBills();
       await loadInventory();
       if (data.warnings && data.warnings.length > 0) {
-        alert('⚠️ Bill Cancelled — Stock Warning\n\nThe following items could not have their stock restored because they were deleted from inventory:\n\n' +
-          data.warnings.map(w => '• ' + w).join('\n') +
-          '\n\nPlease adjust your stock records manually.');
+        alert('⚠️ Bill Cancelled — Please Review\n\n' +
+          data.warnings.map(w => '• ' + w).join('\n'));
       } else {
         showToast('Bill cancelled, stock restored');
       }
@@ -3027,12 +3168,66 @@
       await loadBills();
       await loadInventory();
       if (data.warnings && data.warnings.length > 0) {
-        alert('⚠️ Bill Cancelled — Stock Warning\n\nThe following items could not have their stock restored because they were deleted from inventory:\n\n' +
-          data.warnings.map(w => '• ' + w).join('\n') +
-          '\n\nPlease adjust your stock records manually.');
+        alert('⚠️ Bill Cancelled — Please Review\n\n' +
+          data.warnings.map(w => '• ' + w).join('\n'));
       } else {
         showToast('Bill cancelled, stock restored');
       }
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  // ── Payments ─────────────────────────────────────────────
+  async function openRecordPayment(billId) {
+    try {
+      const res = await fetch(`/api/bills/${billId}`);
+      if (!res.ok) { showToast('Failed to load bill', 'error'); return; }
+      const bill = await res.json();
+      if (bill.status === 'cancelled') { showToast('Cannot record a payment on a cancelled invoice', 'error'); return; }
+      if (bill.balance_due <= 0) { showToast('This invoice is already fully paid', 'error'); return; }
+
+      document.getElementById('payment-bill-id').value = bill.id;
+      document.getElementById('payment-invoice-number').textContent = bill.invoice_number;
+      document.getElementById('payment-balance-due').textContent = '₹' + bill.balance_due.toFixed(2);
+      document.getElementById('payment-amount').value = bill.balance_due.toFixed(2);
+      document.getElementById('payment-method').value = 'cash';
+      document.getElementById('payment-reference').value = '';
+      document.getElementById('payment-notes').value = '';
+      document.getElementById('record-payment-modal').classList.add('active');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function submitPayment() {
+    const billId = document.getElementById('payment-bill-id').value;
+    const amount = parseFloat(document.getElementById('payment-amount').value);
+    if (!amount || amount <= 0) { showToast('Enter a valid amount', 'error'); return; }
+
+    try {
+      const res = await fetch(`/api/bills/${billId}/payments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          payment_method: document.getElementById('payment-method').value,
+          reference_number: document.getElementById('payment-reference').value.trim() || null,
+          notes: document.getElementById('payment-notes').value.trim() || null,
+        })
+      });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error recording payment', 'error'); return; }
+      closeModal('record-payment-modal');
+      await loadBills();
+      if (viewingBillId == billId) await viewBill(parseInt(billId));
+      showToast('Payment recorded');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function cancelPayment(billId, paymentId) {
+    if (!confirm('Void this payment? The invoice balance will be restored.')) return;
+    try {
+      const res = await fetch(`/api/bills/${billId}/payments/${paymentId}/cancel`, { method: 'PATCH' });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      await loadBills();
+      if (viewingBillId == billId) await viewBill(billId);
+      showToast('Payment voided');
     } catch (e) { showToast('Server error', 'error'); }
   }
 
