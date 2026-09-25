@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.database import engine, SessionLocal
 from app.models import Base, User
-from app.routers import inventory, suppliers, categories, units, billing, customers, purchases, dashboard
+from app.routers import inventory, suppliers, categories, units, billing, customers, purchases, dashboard, purchase_orders
 from app.routers import auth as auth_router, users, audit_log
 from app.auth import is_valid_session
 from app.security import hash_password
@@ -32,6 +32,7 @@ with engine.connect() as conn:
     _add_col(conn, 'bill_items',  'unit',             'VARCHAR(20)')
     _add_col(conn, 'bill_items',  'gst_rate',         'REAL DEFAULT 0.0')
     _add_col(conn, 'purchase_bill_items', 'unit',     'VARCHAR(20)')
+    _add_col(conn, 'purchase_bills', 'purchase_order_id', 'INTEGER')
     _add_col(conn, 'bill_items',  'taxable_amount',   'REAL DEFAULT 0.0')
     _add_col(conn, 'bill_items',  'igst_amount',      'REAL DEFAULT 0.0')
 
@@ -96,6 +97,7 @@ app.include_router(units.router)
 app.include_router(billing.router)
 app.include_router(customers.router)
 app.include_router(purchases.router)
+app.include_router(purchase_orders.router)
 app.include_router(dashboard.router)
 app.include_router(users.router)
 app.include_router(audit_log.router)

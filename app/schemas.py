@@ -14,6 +14,10 @@ class PurchaseItemCreate(BaseModel):
 class PurchaseCreate(BaseModel):
     supplier_name: str = Field(..., min_length=1, max_length=100)
     supplier_invoice: Optional[str] = None
+    # Set to record this receipt against an existing (CONFIRMED or
+    # PARTIALLY_RECEIVED) purchase order. Leave unset for the simplified
+    # direct-receipt flow — this app's original purchase behavior.
+    purchase_order_id: Optional[int] = None
     items: List[PurchaseItemCreate]
 
 
@@ -35,10 +39,54 @@ class PurchaseResponse(BaseModel):
     purchase_number: str
     supplier_name: str
     supplier_invoice: Optional[str]
+    purchase_order_id: Optional[int]
     status: str
     total_amount: Money
     created_at: Optional[datetime]
     items: List[PurchaseItemResponse] = []
+
+    class Config:
+        from_attributes = True
+
+
+class PurchaseOrderItemCreate(BaseModel):
+    item_id: int
+    quantity: int = Field(..., gt=0)
+    unit_cost: Money = Field(..., ge=0)
+
+
+class PurchaseOrderCreate(BaseModel):
+    supplier_name: str = Field(..., min_length=1, max_length=100)
+    expected_delivery_date: Optional[datetime] = None
+    notes: Optional[str] = None
+    items: List[PurchaseOrderItemCreate]
+
+
+class PurchaseOrderItemResponse(BaseModel):
+    id: int
+    item_id: Optional[int]
+    item_name: str
+    unit: Optional[str]
+    quantity_ordered: int
+    quantity_received: int
+    unit_cost: Money
+    line_total: Money
+
+    class Config:
+        from_attributes = True
+
+
+class PurchaseOrderResponse(BaseModel):
+    id: int
+    po_number: str
+    supplier_name: str
+    order_date: Optional[datetime]
+    expected_delivery_date: Optional[datetime]
+    status: str
+    total_amount: Money
+    notes: Optional[str]
+    created_at: Optional[datetime]
+    items: List[PurchaseOrderItemResponse] = []
 
     class Config:
         from_attributes = True

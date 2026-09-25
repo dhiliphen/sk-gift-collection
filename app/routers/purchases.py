@@ -8,6 +8,7 @@ from app import schemas
 from app.auth import get_current_username
 from app.audit import record
 from app.repositories.purchase import PurchaseRepository
+from app.repositories.purchase_order import PurchaseOrderRepository
 from app.repositories.item import ItemRepository
 from app.services.purchase import PurchaseService
 from app.utils import amount_in_words
@@ -30,7 +31,7 @@ router = APIRouter(prefix="/api/purchases", tags=["purchases"])
 
 
 def get_service(db: Session = Depends(get_db)) -> PurchaseService:
-    return PurchaseService(PurchaseRepository(db), ItemRepository(db))
+    return PurchaseService(PurchaseRepository(db), ItemRepository(db), PurchaseOrderRepository(db))
 
 
 @router.get("", response_model=list[schemas.PurchaseResponse])

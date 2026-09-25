@@ -2,13 +2,20 @@ from decimal import Decimal
 from fastapi import HTTPException
 from app import models, schemas
 from app.repositories.purchase import PurchaseRepository
+from app.repositories.purchase_order import PurchaseOrderRepository
 from app.repositories.item import ItemRepository
 
 
 class PurchaseService:
-    def __init__(self, purchase_repo: PurchaseRepository, item_repo: ItemRepository):
+    def __init__(
+        self,
+        purchase_repo: PurchaseRepository,
+        item_repo: ItemRepository,
+        order_repo: PurchaseOrderRepository,
+    ):
         self.purchase_repo = purchase_repo
         self.item_repo = item_repo
+        self.order_repo = order_repo
 
     def get_all(self) -> list[models.PurchaseBill]:
         return self.purchase_repo.get_all_ordered()
@@ -18,6 +25,13 @@ class PurchaseService:
         if not pb:
             raise HTTPException(status_code=404, detail="Purchase bill not found")
         return pb
+
+    @staticmethod
+    def _recompute_order_status(order: models.PurchaseOrder) -> None:
+        if all(line.quantity_received >= line.quantity_ordered for line in order.items):
+            order.status = "RECEIVED"
+        elif any(line.quantity_received > 0 for line in order.items):
+            order.status = "PARTIALLY_RECEIVED"
 
     def create(self, data: schemas.PurchaseCreate) -> models.PurchaseBill:
         if not data.items:
@@ -34,10 +48,41 @@ class PurchaseService:
                 raise HTTPException(status_code=404, detail=f"Item id {line.item_id} not found")
             resolved.append((item, line))
 
+        order = None
+        po_lines_by_item = {}
+        if data.purchase_order_id is not None:
+            order = self.order_repo.get_with_items(data.purchase_order_id)
+            if not order:
+                raise HTTPException(status_code=404, detail=f"Purchase order id {data.purchase_order_id} not found")
+            if order.status not in ("CONFIRMED", "PARTIALLY_RECEIVED"):
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Cannot record a goods receipt against a {order.status.replace('_', ' ').lower()} order",
+                )
+            po_lines_by_item = {line.item_id: line for line in order.items}
+
+            # Validate every line against remaining ordered quantity before
+            # touching anything, so a bad line doesn't partially apply.
+            for item, line in resolved:
+                po_line = po_lines_by_item.get(item.id)
+                if po_line is None:
+                    continue  # supplier sent something not on the original order — allowed, just untracked against it
+                remaining = po_line.quantity_ordered - po_line.quantity_received
+                if line.quantity > remaining:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"Cannot receive {line.quantity} of '{item.name}' — only {remaining} "
+                            f"remaining on {order.po_number} (ordered {po_line.quantity_ordered}, "
+                            f"already received {po_line.quantity_received})"
+                        ),
+                    )
+
         db_bill = models.PurchaseBill(
             purchase_number="TMP",
             supplier_name=data.supplier_name,
             supplier_invoice=data.supplier_invoice,
+            purchase_order_id=data.purchase_order_id,
             status="received",
             total_amount=Decimal("0"),
         )
@@ -62,6 +107,12 @@ class PurchaseService:
                 unit_cost=line.unit_cost,
                 line_total=line_total,
             ))
+            po_line = po_lines_by_item.get(item.id)
+            if po_line is not None:
+                po_line.quantity_received += line.quantity
+
+        if order is not None:
+            self._recompute_order_status(order)
 
         db_bill.total_amount = round(total, 2)
         self.purchase_repo.commit()
@@ -112,6 +163,21 @@ class PurchaseService:
                     f"from inventory. This quantity could not be reversed. "
                     f"Please adjust your stock records manually."
                 )
+
+        if pb.purchase_order_id:
+            order = self.order_repo.get_with_items(pb.purchase_order_id)
+            if order:
+                po_lines_by_item = {line.item_id: line for line in order.items}
+                for line in pb.items:
+                    po_line = po_lines_by_item.get(line.item_id)
+                    if po_line is not None:
+                        po_line.quantity_received = max(0, po_line.quantity_received - line.quantity)
+                # A receipt is being reversed, so the order can never still be
+                # RECEIVED/PARTIALLY_RECEIVED at exactly its prior level —
+                # recompute from scratch, falling back to CONFIRMED.
+                if order.status in ("RECEIVED", "PARTIALLY_RECEIVED"):
+                    order.status = "CONFIRMED"
+                self._recompute_order_status(order)
 
         pb.status = "cancelled"
         self.purchase_repo.commit()

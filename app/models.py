@@ -10,18 +10,64 @@ from app.database import Base
 MONEY = Numeric(12, 2)
 
 
+class PurchaseOrder(Base):
+    """A commitment to buy, placed with a supplier. Creating or confirming a
+    PO never touches stock — inventory only changes when a PurchaseBill
+    (goods receipt) is recorded against it. See Section 10 of the business
+    spec: "Do not increase inventory merely because a purchase order was
+    created.\""""
+    __tablename__ = "purchase_orders"
+
+    id = Column(Integer, primary_key=True, index=True)
+    po_number = Column(String(20), unique=True, nullable=False, index=True)
+    supplier_name = Column(String(100), nullable=False)
+    order_date = Column(DateTime(timezone=True), server_default=func.now())
+    expected_delivery_date = Column(DateTime(timezone=True), nullable=True)
+    # DRAFT | CONFIRMED | PARTIALLY_RECEIVED | RECEIVED | CANCELLED
+    status = Column(String(20), default="DRAFT", nullable=False)
+    total_amount = Column(MONEY, default=0)
+    notes = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    items = relationship("PurchaseOrderItem", back_populates="order", cascade="all, delete-orphan")
+    receipts = relationship("PurchaseBill", back_populates="purchase_order")
+
+
+class PurchaseOrderItem(Base):
+    __tablename__ = "purchase_order_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=False)
+    item_id = Column(Integer, nullable=True)
+    item_name = Column(String(100), nullable=False)
+    unit = Column(String(20), nullable=True)
+    quantity_ordered = Column(Integer, nullable=False)
+    # Running total received across all goods receipts against this PO line.
+    quantity_received = Column(Integer, default=0, nullable=False)
+    unit_cost = Column(MONEY, nullable=False)
+    line_total = Column(MONEY, nullable=False)
+
+    order = relationship("PurchaseOrder", back_populates="items")
+
+
 class PurchaseBill(Base):
+    """A goods receipt: this is where stock actually increases. May
+    optionally reference the PurchaseOrder it fulfills (purchase_order_id is
+    nullable — the simplified "direct receipt, no PO" flow this app already
+    had is fully preserved when it's left unset)."""
     __tablename__ = "purchase_bills"
 
     id = Column(Integer, primary_key=True, index=True)
     purchase_number = Column(String(20), unique=True, nullable=False, index=True)
     supplier_name = Column(String(100), nullable=False)
     supplier_invoice = Column(String(50), nullable=True)   # supplier's own ref number
+    purchase_order_id = Column(Integer, ForeignKey("purchase_orders.id"), nullable=True)
     status = Column(String(20), default="received")        # received | cancelled
     total_amount = Column(MONEY, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     items = relationship("PurchaseBillItem", back_populates="bill", cascade="all, delete-orphan")
+    purchase_order = relationship("PurchaseOrder", back_populates="receipts")
 
 
 class PurchaseBillItem(Base):

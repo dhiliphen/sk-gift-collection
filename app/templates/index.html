@@ -980,6 +980,9 @@
   .status-badge.unpaid { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
   .status-badge.overdue { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
   .status-badge.partially_paid { background: var(--info-dim); color: var(--info); border: 1px solid var(--info); }
+  .status-badge.draft { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+  .status-badge.confirmed { background: var(--info-dim); color: var(--info); border: 1px solid var(--info); }
+  .status-badge.partially_received { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
   .status-badge.role-admin { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
   .status-badge.role-other { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
   .status-badge.inactive { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
@@ -1399,6 +1402,11 @@
         <div class="dash-card-desc">Record goods received from your suppliers.</div>
         <div class="dash-card-link">Record Purchase →</div>
       </div>
+      <div class="dash-card" onclick="switchView('purchase-orders')">
+        <div class="dash-card-label">Purchase Orders</div>
+        <div class="dash-card-desc">Place orders with suppliers ahead of receiving goods.</div>
+        <div class="dash-card-link">Manage Orders →</div>
+      </div>
       <div class="dash-card" onclick="switchView('customers')">
         <div class="dash-card-label">Customers</div>
         <div class="dash-card-desc">View and manage your customer list.</div>
@@ -1734,6 +1742,90 @@
   </div>
 </div><!-- end view-purchases -->
 
+<!-- PURCHASE ORDERS VIEW -->
+<div id="view-purchase-orders" class="view">
+  <div class="page-view">
+    <div class="page-view-header">
+      <div>
+        <button class="back-btn" onclick="switchView('dashboard')">← Dashboard</button>
+        <div class="page-view-title">Purchase Orders</div>
+        <div class="page-view-subtitle">Commit to a supplier order before goods arrive</div>
+      </div>
+      <button class="btn btn-primary" onclick="openCreatePurchaseOrder()">+ New Purchase Order</button>
+    </div>
+    <div class="page-view-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>PO #</th><th>Supplier</th><th>Items</th><th>Total</th><th>Status</th><th>Order Date</th><th>Actions</th></tr>
+          </thead>
+          <tbody id="purchase-orders-table">
+            <tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading purchase orders...</div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div><!-- end view-purchase-orders -->
+
+<!-- CREATE PURCHASE ORDER MODAL -->
+<div class="modal-overlay" id="create-po-modal">
+  <div class="modal" style="width:640px;">
+    <div class="modal-header">
+      <div class="modal-title">New Purchase Order</div>
+      <button class="modal-close" onclick="closeModal('create-po-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Supplier Name *</label>
+          <input type="text" id="po-supplier" placeholder="e.g. Rajan Traders" list="suppliers-datalist">
+        </div>
+        <div class="form-group">
+          <label>Expected Delivery</label>
+          <input type="date" id="po-expected-date">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" id="po-notes" placeholder="Optional">
+      </div>
+      <hr class="divider">
+      <div class="sidebar-title" style="margin-bottom:0.75rem;">Items Ordered</div>
+      <div class="line-header">
+        <span>#</span><span>Item</span><span>Qty</span><span>Unit Cost</span><span>Total</span><span></span>
+      </div>
+      <div id="po-lines"></div>
+      <button class="btn btn-ghost" style="width:100%; margin-top:0.5rem;" onclick="addPoLine()">+ ADD ITEM</button>
+      <div class="bill-total-row">
+        <span style="font-family:var(--mono); font-size:0.7rem; color:var(--text-muted); letter-spacing:1px;">GRAND TOTAL</span>
+        <span class="bill-grand-total" id="po-grand-total">₹0.00</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('create-po-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPurchaseOrder()">CREATE ORDER</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIEW PURCHASE ORDER MODAL -->
+<div class="modal-overlay" id="view-po-modal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title" id="view-po-title">Purchase Order</div>
+      <button class="modal-close" onclick="closeModal('view-po-modal')">×</button>
+    </div>
+    <div class="modal-body" id="view-po-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('view-po-modal')">Close</button>
+      <button class="btn btn-stock" id="po-confirm-btn" onclick="confirmCurrentPurchaseOrder()">CONFIRM ORDER</button>
+      <button class="btn btn-primary" id="po-receive-btn" onclick="closeModal('view-po-modal'); openReceiveGoods(currentPoId)">RECEIVE GOODS</button>
+      <button class="btn btn-warn" id="po-cancel-btn" onclick="cancelCurrentPurchaseOrder()">CANCEL ORDER</button>
+    </div>
+  </div>
+</div>
+
 <!-- CREATE PURCHASE MODAL -->
 <div class="modal-overlay" id="create-purchase-modal">
   <div class="modal" style="width:640px;">
@@ -1742,6 +1834,8 @@
       <button class="modal-close" onclick="closeModal('create-purchase-modal')">×</button>
     </div>
     <div class="modal-body">
+      <input type="hidden" id="pur-po-id">
+      <div id="pur-po-banner" style="display:none; background:var(--info-dim); color:var(--info); border:1px solid var(--info); border-radius:4px; padding:0.5rem 0.75rem; font-size:0.8rem; margin-bottom:1rem;"></div>
       <div class="form-row">
         <div class="form-group">
           <label>Supplier Name *</label>
@@ -2816,12 +2910,12 @@
 
   // ── View Switching ───────────────────────────────────────
   let currentView = 'dashboard';
-  const views = ['dashboard', 'inventory', 'suppliers', 'customers', 'purchases', 'billing', 'settings', 'audit'];
+  const views = ['dashboard', 'inventory', 'suppliers', 'customers', 'purchases', 'purchase-orders', 'billing', 'settings', 'audit'];
   const newLabels = { inventory: '+ NEW ITEM', suppliers: '+ NEW SUPPLIER', customers: '+ NEW CUSTOMER', purchases: '+ NEW PURCHASE', billing: '+ NEW BILL' };
   const addModals = { suppliers: 'add-supplier-modal', customers: 'add-customer-modal' };
   const loaders = {
     dashboard: loadDashboard, suppliers: loadSuppliers, customers: loadCustomers,
-    purchases: loadPurchases, billing: loadBills,
+    purchases: loadPurchases, billing: loadBills, 'purchase-orders': loadPurchaseOrders,
     settings: () => { loadCategories(); loadUnits(); if (currentUser && currentUser.role === 'ADMIN') loadUsers(); },
     audit: loadAuditLog,
   };
@@ -3729,7 +3823,10 @@
     tbody.innerHTML = purchases.map(p => `
       <tr>
         <td style="font-family:var(--mono); font-size:0.8rem; color:var(--accent);">${p.purchase_number}</td>
-        <td><div class="item-name">${p.supplier_name}</div></td>
+        <td>
+          <div class="item-name">${p.supplier_name}</div>
+          ${p.purchase_order_id ? `<div style="font-size:0.7rem; color:var(--text-muted);">via PO #${p.purchase_order_id}</div>` : ''}
+        </td>
         <td style="font-family:var(--mono); font-size:0.75rem; color:var(--text-muted);">${p.supplier_invoice || '—'}</td>
         <td style="font-family:var(--mono); font-size:0.8rem;">${p.items.length} item${p.items.length !== 1 ? 's' : ''}</td>
         <td class="price-cell">₹${p.total_amount.toFixed(2)}</td>
@@ -3745,6 +3842,8 @@
   }
 
   function openCreatePurchase() {
+    document.getElementById('pur-po-id').value = '';
+    document.getElementById('pur-po-banner').style.display = 'none';
     document.getElementById('pur-supplier').value = '';
     document.getElementById('pur-invoice-ref').value = '';
     document.getElementById('purchase-lines').innerHTML = '';
@@ -3753,24 +3852,63 @@
     document.getElementById('create-purchase-modal').classList.add('active');
   }
 
-  function addPurchaseLine() {
+  async function openReceiveGoods(orderId) {
+    try {
+      const res = await fetch(`/api/purchase-orders/${orderId}`);
+      if (!res.ok) { showToast('Failed to load purchase order', 'error'); return; }
+      const order = await res.json();
+      if (order.status !== 'CONFIRMED' && order.status !== 'PARTIALLY_RECEIVED') {
+        showToast('Only a confirmed order can receive goods', 'error');
+        return;
+      }
+
+      document.getElementById('pur-po-id').value = order.id;
+      const banner = document.getElementById('pur-po-banner');
+      banner.style.display = '';
+      banner.textContent = `Receiving goods against ${order.po_number}`;
+      document.getElementById('pur-supplier').value = order.supplier_name;
+      document.getElementById('pur-invoice-ref').value = '';
+      document.getElementById('purchase-lines').innerHTML = '';
+      document.getElementById('pur-grand-total').textContent = '₹0.00';
+
+      const outstanding = order.items.filter(i => i.quantity_received < i.quantity_ordered);
+      if (!outstanding.length) {
+        showToast('Everything on this order has already been received', 'error');
+        return;
+      }
+      outstanding.forEach(line => {
+        addPurchaseLine({
+          itemId: line.item_id,
+          quantity: line.quantity_ordered - line.quantity_received,
+          unitCost: line.unit_cost,
+        });
+      });
+      document.getElementById('create-purchase-modal').classList.add('active');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  function addPurchaseLine(prefill) {
     const container = document.getElementById('purchase-lines');
     const sno = container.children.length + 1;
     const itemOpts = allItems.map(i =>
-      `<option value="${i.id}">${i.name} (stock: ${i.quantity} ${i.unit})</option>`
+      `<option value="${i.id}" ${prefill && prefill.itemId === i.id ? 'selected' : ''}>${i.name} (stock: ${i.quantity} ${i.unit})</option>`
     ).join('');
     const div = document.createElement('div');
     div.className = 'bill-line-item';
     div.innerHTML = `
       <span class="line-sno">${sno}</span>
-      <select>
+      <select ${prefill ? 'disabled' : ''}>
         <option value="">— select item —</option>${itemOpts}
       </select>
-      <input type="number" min="1" value="1" placeholder="Qty" oninput="recalcPurchaseLine(this.closest('.bill-line-item'))">
-      <input type="number" min="0" step="0.01" value="" placeholder="Unit Cost" oninput="recalcPurchaseLine(this.closest('.bill-line-item'))">
+      <input type="number" min="1" value="${prefill ? prefill.quantity : 1}" placeholder="Qty" oninput="recalcPurchaseLine(this.closest('.bill-line-item'))">
+      <input type="number" min="0" step="0.01" value="${prefill ? prefill.unitCost : ''}" placeholder="Unit Cost" oninput="recalcPurchaseLine(this.closest('.bill-line-item'))">
       <div class="line-total-display">₹0.00</div>
       <button class="remove-line-btn" onclick="this.closest('.bill-line-item').remove(); renumberLines('purchase-lines'); recalcPurchaseTotal()">×</button>`;
     container.appendChild(div);
+    if (prefill) {
+      div.querySelector('select').value = String(prefill.itemId);
+      recalcPurchaseLine(div);
+    }
   }
 
   function recalcPurchaseLine(row) {
@@ -3805,6 +3943,7 @@
       lines.push({ item_id: itemId, quantity: qty, unit_cost: cost });
     });
     if (!valid || !lines.length) { showToast('Fill all item rows correctly', 'error'); return; }
+    const poId = document.getElementById('pur-po-id').value;
     try {
       const res = await fetch('/api/purchases', {
         method: 'POST',
@@ -3812,6 +3951,7 @@
         body: JSON.stringify({
           supplier_name: supplier,
           supplier_invoice: document.getElementById('pur-invoice-ref').value.trim() || null,
+          purchase_order_id: poId ? parseInt(poId) : null,
           items: lines
         })
       });
@@ -3819,6 +3959,7 @@
       closeModal('create-purchase-modal');
       await loadPurchases();
       await loadInventory();
+      if (poId) await loadPurchaseOrders();
       showToast('Purchase bill recorded — stock updated');
     } catch (e) { showToast('Server error', 'error'); }
   }
@@ -3883,6 +4024,7 @@
       const data = await res.json();
       await loadPurchases();
       await loadInventory();
+      if (data.purchase && data.purchase.purchase_order_id) await loadPurchaseOrders();
       if (data.warnings && data.warnings.length > 0) {
         alert('⚠️ Purchase Cancelled — Stock Warning\n\nThe following items could not have their stock reversed because they were deleted from inventory:\n\n' +
           data.warnings.map(w => '• ' + w).join('\n') +
@@ -3890,6 +4032,202 @@
       } else {
         showToast('Purchase cancelled — stock reversed');
       }
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  // ── Purchase Orders ──────────────────────────────────────
+  let allPurchaseOrders = [];
+  let currentPoId = null;
+
+  async function loadPurchaseOrders() {
+    try {
+      const res = await fetch('/api/purchase-orders');
+      allPurchaseOrders = await res.json();
+      renderPurchaseOrders(allPurchaseOrders);
+    } catch (e) {
+      showToast('Failed to load purchase orders', 'error');
+    }
+  }
+
+  function renderPurchaseOrders(orders) {
+    const tbody = document.getElementById('purchase-orders-table');
+    if (!orders.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No purchase orders yet</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = orders.map(o => {
+      const canReceive = o.status === 'CONFIRMED' || o.status === 'PARTIALLY_RECEIVED';
+      return `
+      <tr style="cursor:pointer;" onclick="viewPurchaseOrder(${o.id})">
+        <td style="font-family:var(--mono); font-size:0.8rem; color:var(--accent);">${o.po_number}</td>
+        <td><div class="item-name">${o.supplier_name}</div></td>
+        <td style="font-family:var(--mono); font-size:0.8rem;">${o.items.length} item${o.items.length !== 1 ? 's' : ''}</td>
+        <td class="price-cell">₹${o.total_amount.toFixed(2)}</td>
+        <td><span class="status-badge ${o.status.toLowerCase()}">${o.status.replace('_', ' ')}</span></td>
+        <td style="font-family:var(--mono); font-size:0.75rem; color:var(--text-muted);">${o.order_date ? new Date(o.order_date).toLocaleDateString('en-IN') : '—'}</td>
+        <td><div class="actions">
+          ${o.status === 'DRAFT' ? `<button class="btn btn-stock" onclick="event.stopPropagation(); quickConfirmPo(${o.id})">CONFIRM</button>` : ''}
+          ${canReceive ? `<button class="btn btn-primary" onclick="event.stopPropagation(); openReceiveGoods(${o.id})">RECEIVE</button>` : ''}
+          ${(o.status === 'DRAFT' || o.status === 'CONFIRMED') ? `<button class="btn btn-warn" onclick="event.stopPropagation(); quickCancelPo(${o.id})">CANCEL</button>` : ''}
+        </div></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function openCreatePurchaseOrder() {
+    document.getElementById('po-supplier').value = '';
+    document.getElementById('po-expected-date').value = '';
+    document.getElementById('po-notes').value = '';
+    document.getElementById('po-lines').innerHTML = '';
+    document.getElementById('po-grand-total').textContent = '₹0.00';
+    addPoLine();
+    document.getElementById('create-po-modal').classList.add('active');
+  }
+
+  function addPoLine() {
+    const container = document.getElementById('po-lines');
+    const sno = container.children.length + 1;
+    const itemOpts = allItems.map(i => `<option value="${i.id}">${i.name} (stock: ${i.quantity} ${i.unit})</option>`).join('');
+    const div = document.createElement('div');
+    div.className = 'bill-line-item';
+    div.innerHTML = `
+      <span class="line-sno">${sno}</span>
+      <select>
+        <option value="">— select item —</option>${itemOpts}
+      </select>
+      <input type="number" min="1" value="1" placeholder="Qty" oninput="recalcPoLine(this.closest('.bill-line-item'))">
+      <input type="number" min="0" step="0.01" value="" placeholder="Unit Cost" oninput="recalcPoLine(this.closest('.bill-line-item'))">
+      <div class="line-total-display">₹0.00</div>
+      <button class="remove-line-btn" onclick="this.closest('.bill-line-item').remove(); renumberLines('po-lines'); recalcPoTotal()">×</button>`;
+    container.appendChild(div);
+  }
+
+  function recalcPoLine(row) {
+    const inputs = row.querySelectorAll('input');
+    const qty = parseFloat(inputs[0].value) || 0;
+    const cost = parseFloat(inputs[1].value) || 0;
+    row.querySelector('.line-total-display').textContent = '₹' + (qty * cost).toFixed(2);
+    recalcPoTotal();
+  }
+
+  function recalcPoTotal() {
+    let grand = 0;
+    document.querySelectorAll('#po-lines .line-total-display').forEach(el => {
+      grand += parseFloat(el.textContent.replace('₹', '')) || 0;
+    });
+    document.getElementById('po-grand-total').textContent = '₹' + grand.toFixed(2);
+  }
+
+  async function submitPurchaseOrder() {
+    const supplier = document.getElementById('po-supplier').value.trim();
+    if (!supplier) { showToast('Supplier name is required', 'error'); return; }
+    const lines = [];
+    let valid = true;
+    document.querySelectorAll('#po-lines .bill-line-item').forEach(row => {
+      const sel = row.querySelector('select');
+      const inputs = row.querySelectorAll('input');
+      const itemId = parseInt(sel.value);
+      const qty = parseInt(inputs[0].value);
+      const cost = parseFloat(inputs[1].value);
+      if (!itemId || !qty || isNaN(cost)) { valid = false; return; }
+      lines.push({ item_id: itemId, quantity: qty, unit_cost: cost });
+    });
+    if (!valid || !lines.length) { showToast('Fill all item rows correctly', 'error'); return; }
+
+    const expectedDate = document.getElementById('po-expected-date').value;
+    try {
+      const res = await fetch('/api/purchase-orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          supplier_name: supplier,
+          expected_delivery_date: expectedDate ? expectedDate + 'T00:00:00' : null,
+          notes: document.getElementById('po-notes').value.trim() || null,
+          items: lines
+        })
+      });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      closeModal('create-po-modal');
+      await loadPurchaseOrders();
+      showToast('Purchase order created (draft)');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  function viewPurchaseOrder(id) {
+    const o = allPurchaseOrders.find(x => x.id === id);
+    if (!o) return;
+    currentPoId = id;
+    document.getElementById('view-po-title').textContent = o.po_number;
+
+    document.getElementById('po-confirm-btn').style.display = o.status === 'DRAFT' ? '' : 'none';
+    document.getElementById('po-receive-btn').style.display = (o.status === 'CONFIRMED' || o.status === 'PARTIALLY_RECEIVED') ? '' : 'none';
+    document.getElementById('po-cancel-btn').style.display = (o.status === 'DRAFT' || o.status === 'CONFIRMED') ? '' : 'none';
+
+    const rows = o.items.map(i => `
+      <tr>
+        <td>${i.item_name}</td>
+        <td style="font-family:var(--mono); text-align:center;">${i.quantity_ordered}</td>
+        <td style="font-family:var(--mono); text-align:center; color:${i.quantity_received >= i.quantity_ordered ? 'var(--accent)' : 'var(--text-muted)'};">${i.quantity_received}</td>
+        <td style="font-family:var(--mono);">₹${i.unit_cost.toFixed(2)}</td>
+        <td style="font-family:var(--mono); color:var(--accent);">₹${i.line_total.toFixed(2)}</td>
+      </tr>`).join('');
+
+    document.getElementById('view-po-body').innerHTML = `
+      <div style="display:flex; gap:2rem; margin-bottom:1rem; flex-wrap:wrap;">
+        <div>
+          <div class="stat-label">Supplier</div>
+          <div style="font-weight:600; margin-top:0.25rem;">${o.supplier_name}</div>
+        </div>
+        <div>
+          <div class="stat-label">Status</div>
+          <div style="margin-top:0.25rem;"><span class="status-badge ${o.status.toLowerCase()}">${o.status.replace('_', ' ')}</span></div>
+        </div>
+        <div>
+          <div class="stat-label">Expected Delivery</div>
+          <div style="font-family:var(--mono); font-size:0.85rem; margin-top:0.25rem;">${o.expected_delivery_date ? new Date(o.expected_delivery_date).toLocaleDateString('en-IN') : '—'}</div>
+        </div>
+      </div>
+      ${o.notes ? `<div style="color:var(--text-muted); font-size:0.85rem; margin-bottom:1rem;">${o.notes}</div>` : ''}
+      <table class="bill-detail-table">
+        <thead><tr><th>Item</th><th style="text-align:center;">Ordered</th><th style="text-align:center;">Received</th><th>Unit Cost</th><th>Total</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="bill-total-row">
+        <span style="font-family:var(--mono); font-size:0.7rem; color:var(--text-muted); letter-spacing:1px;">GRAND TOTAL</span>
+        <span class="bill-grand-total">₹${o.total_amount.toLocaleString()}</span>
+      </div>`;
+
+    document.getElementById('view-po-modal').classList.add('active');
+  }
+
+  async function confirmCurrentPurchaseOrder() {
+    if (!currentPoId) return;
+    await quickConfirmPo(currentPoId);
+    closeModal('view-po-modal');
+  }
+
+  async function cancelCurrentPurchaseOrder() {
+    if (!currentPoId) return;
+    await quickCancelPo(currentPoId);
+    closeModal('view-po-modal');
+  }
+
+  async function quickConfirmPo(id) {
+    try {
+      const res = await fetch(`/api/purchase-orders/${id}/confirm`, { method: 'PATCH' });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      await loadPurchaseOrders();
+      showToast('Purchase order confirmed');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function quickCancelPo(id) {
+    if (!confirm('Cancel this purchase order?')) return;
+    try {
+      const res = await fetch(`/api/purchase-orders/${id}/cancel`, { method: 'PATCH' });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      await loadPurchaseOrders();
+      showToast('Purchase order cancelled');
     } catch (e) { showToast('Server error', 'error'); }
   }
 

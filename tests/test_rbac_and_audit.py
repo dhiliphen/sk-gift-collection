@@ -271,6 +271,32 @@ def test_record_payment_is_audited(client, sample_item):
     assert "50" in entry["new_value"]
 
 
+def test_create_purchase_order_is_audited(client, sample_item):
+    order = client.post(
+        "/api/purchase-orders",
+        json={"supplier_name": "Audit PO Supplier", "items": [{"item_id": sample_item.id, "quantity": 5, "unit_cost": 10.0}]},
+        headers=AUTH_HEADERS,
+    ).json()
+    entries = client.get("/api/audit-log", headers=AUTH_HEADERS).json()
+    entry = next(e for e in entries if e["action"] == "CREATE_PURCHASE_ORDER" and e["entity_id"] == order["id"])
+    assert entry["entity_type"] == "purchase_order"
+
+
+def test_confirm_and_cancel_purchase_order_are_audited(client, sample_item):
+    order = client.post(
+        "/api/purchase-orders",
+        json={"supplier_name": "Audit PO Supplier2", "items": [{"item_id": sample_item.id, "quantity": 5, "unit_cost": 10.0}]},
+        headers=AUTH_HEADERS,
+    ).json()
+    client.patch(f"/api/purchase-orders/{order['id']}/confirm", headers=AUTH_HEADERS)
+    client.patch(f"/api/purchase-orders/{order['id']}/cancel", headers=AUTH_HEADERS)
+
+    entries = client.get("/api/audit-log", headers=AUTH_HEADERS).json()
+    actions = [e["action"] for e in entries if e["entity_id"] == order["id"]]
+    assert "CONFIRM_PURCHASE_ORDER" in actions
+    assert "CANCEL_PURCHASE_ORDER" in actions
+
+
 def test_audit_log_can_filter_by_action(client):
     client.post("/api/items", json={"name": "Filter Test Item"}, headers=AUTH_HEADERS)
     resp = client.get("/api/audit-log?action=CREATE_ITEM", headers=AUTH_HEADERS)
