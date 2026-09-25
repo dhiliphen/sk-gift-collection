@@ -32,6 +32,11 @@ def migrate():
                 amount=bill.amount_paid,
                 payment_method="cash",
                 notes="Backfilled at payment-tracking introduction — historical sale recorded as paid in full",
+                # Backdate to the bill's own date, not "now" — otherwise every
+                # backfilled payment would appear as "received today" (and
+                # thus in today's collections) on whatever day this script
+                # happens to run.
+                payment_date=bill.created_at,
             ))
             created.append(bill.invoice_number)
 

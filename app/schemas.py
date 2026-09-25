@@ -307,3 +307,40 @@ class ItemResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class DashboardAlert(BaseModel):
+    level: str  # warning | info
+    message: str
+
+
+class DashboardToday(BaseModel):
+    sales_amount: Money
+    purchases_amount: Money
+    payments_received: Money
+    outstanding_amount: Money
+
+
+class DashboardInventory(BaseModel):
+    total_products: int
+    stock_value: Money
+    low_stock_count: int
+    out_of_stock_count: int
+
+
+class DashboardSales(BaseModel):
+    invoices_today: int
+    pending_payment_count: int
+    recent_invoices: List[BillResponse]
+
+
+class DashboardPurchases(BaseModel):
+    recent_purchases: List[PurchaseResponse]
+
+
+class DashboardResponse(BaseModel):
+    today: DashboardToday
+    inventory: DashboardInventory
+    sales: DashboardSales
+    purchases: DashboardPurchases
+    alerts: List[DashboardAlert]

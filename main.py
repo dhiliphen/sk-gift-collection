@@ -6,7 +6,7 @@ from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
 from app.database import engine
 from app.models import Base
-from app.routers import inventory, suppliers, categories, units, billing, customers, purchases
+from app.routers import inventory, suppliers, categories, units, billing, customers, purchases, dashboard
 from app.routers import auth as auth_router
 from app.auth import is_valid_session
 from sqlalchemy import text, inspect as sa_inspect
@@ -78,6 +78,7 @@ app.include_router(units.router)
 app.include_router(billing.router)
 app.include_router(customers.router)
 app.include_router(purchases.router)
+app.include_router(dashboard.router)
 
 
 @app.get("/", response_class=HTMLResponse)

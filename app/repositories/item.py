@@ -77,6 +77,9 @@ class ItemRepository(BaseRepository):
                     case((models.Item.quantity <= models.Item.low_stock_threshold, 1), else_=0)
                 ), 0
             ).label("low_stock_count"),
+            func.coalesce(
+                func.sum(case((models.Item.quantity == 0, 1), else_=0)), 0
+            ).label("out_of_stock_count"),
         ).one()
 
         categories = [
@@ -91,5 +94,6 @@ class ItemRepository(BaseRepository):
             "total_items": row.total_items,
             "total_value": round(float(row.total_value), 2),
             "low_stock_count": row.low_stock_count,
+            "out_of_stock_count": row.out_of_stock_count,
             "categories": categories,
         }

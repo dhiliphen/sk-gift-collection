@@ -298,6 +298,79 @@
     gap: 1.25rem;
   }
 
+  .dashboard-section-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 1.75rem 0 0.75rem;
+  }
+  .dashboard-section-label:first-child { margin-top: 0; }
+
+  .dashboard-alerts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .alert-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    border: 1px solid;
+  }
+  .alert-item.warning { background: var(--warn-dim); color: var(--warn); border-color: var(--warn); }
+  .alert-item.info { background: var(--info-dim); color: var(--info); border-color: var(--info); }
+
+  .dashboard-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .dashboard-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .dashboard-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.85rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .dashboard-panel-link { cursor: pointer; color: var(--accent); text-transform: none; letter-spacing: 0; font-size: 0.75rem; }
+  .recent-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.65rem 1.1rem;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  .recent-row:last-child { border-bottom: none; }
+  .recent-row:hover { background: var(--surface2); }
+  .recent-row-main { font-weight: 600; }
+  .recent-row-sub { color: var(--text-muted); font-size: 0.75rem; margin-top: 0.15rem; }
+  .recent-row-amount { font-family: var(--mono); color: var(--accent); }
+  .recent-empty { padding: 1.5rem 1.1rem; text-align: center; color: var(--text-muted); font-size: 0.8rem; }
+
+  @media (max-width: 700px) {
+    .dashboard-columns { grid-template-columns: 1fr; }
+  }
+
   .dash-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -1229,13 +1302,36 @@
 <!-- DASHBOARD VIEW -->
 <div id="view-dashboard" class="view active">
   <div class="dashboard-page">
+    <div class="dashboard-alerts" id="dashboard-alerts" style="display:none;"></div>
+
+    <div class="dashboard-section-label">Today</div>
     <div class="stats-bar">
       <div class="stat-card">
-        <div class="stat-label">Total Items</div>
+        <div class="stat-label">Sales</div>
+        <div class="stat-value accent" id="stat-today-sales">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Purchases</div>
+        <div class="stat-value" id="stat-today-purchases">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Payments Received</div>
+        <div class="stat-value accent" id="stat-today-payments">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Outstanding</div>
+        <div class="stat-value warn" id="stat-outstanding">—</div>
+      </div>
+    </div>
+
+    <div class="dashboard-section-label">Inventory</div>
+    <div class="stats-bar">
+      <div class="stat-card">
+        <div class="stat-label">Total Products</div>
         <div class="stat-value accent" id="stat-total">—</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Portfolio Value</div>
+        <div class="stat-label">Stock Value</div>
         <div class="stat-value" id="stat-value">—</div>
       </div>
       <div class="stat-card">
@@ -1243,8 +1339,25 @@
         <div class="stat-value warn" id="stat-low">—</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">Categories</div>
-        <div class="stat-value" id="stat-cats">—</div>
+        <div class="stat-label">Out of Stock</div>
+        <div class="stat-value warn" id="stat-oos">—</div>
+      </div>
+    </div>
+
+    <div class="dashboard-columns">
+      <div class="dashboard-panel">
+        <div class="dashboard-panel-header">
+          <span>Recent Invoices</span>
+          <span class="dashboard-panel-link" onclick="switchView('billing')">View all →</span>
+        </div>
+        <div id="dashboard-recent-invoices"></div>
+      </div>
+      <div class="dashboard-panel">
+        <div class="dashboard-panel-header">
+          <span>Recent Purchases</span>
+          <span class="dashboard-panel-link" onclick="switchView('purchases')">View all →</span>
+        </div>
+        <div id="dashboard-recent-purchases"></div>
       </div>
     </div>
     <div class="dashboard-heading">SK GIFT COLLECTION</div>
@@ -2203,7 +2316,7 @@
       const res = await fetch('/api/items');
       allItems = await res.json();
       renderTable(allItems);
-      loadStats();
+      loadDashboard();
     } catch (e) {
       showToast('Failed to load inventory', 'error');
     }
@@ -2230,15 +2343,62 @@
     renderCategoryFilters(cats);
   }
 
-  async function loadStats() {
+  async function loadDashboard() {
     try {
-      const res = await fetch('/api/stats');
-      const s = await res.json();
-      document.getElementById('stat-total').textContent = s.total_items;
-      document.getElementById('stat-value').textContent = '₹' + s.total_value.toLocaleString();
-      document.getElementById('stat-low').textContent = s.low_stock_count;
-      document.getElementById('stat-cats').textContent = s.categories.length;
+      const res = await fetch('/api/dashboard');
+      const d = await res.json();
+
+      document.getElementById('stat-today-sales').textContent = '₹' + d.today.sales_amount.toLocaleString();
+      document.getElementById('stat-today-purchases').textContent = '₹' + d.today.purchases_amount.toLocaleString();
+      document.getElementById('stat-today-payments').textContent = '₹' + d.today.payments_received.toLocaleString();
+      document.getElementById('stat-outstanding').textContent = '₹' + d.today.outstanding_amount.toLocaleString();
+
+      document.getElementById('stat-total').textContent = d.inventory.total_products;
+      document.getElementById('stat-value').textContent = '₹' + d.inventory.stock_value.toLocaleString();
+      document.getElementById('stat-low').textContent = d.inventory.low_stock_count;
+      document.getElementById('stat-oos').textContent = d.inventory.out_of_stock_count;
+
+      const alertsEl = document.getElementById('dashboard-alerts');
+      if (d.alerts.length) {
+        alertsEl.style.display = '';
+        alertsEl.innerHTML = d.alerts.map(a =>
+          `<div class="alert-item ${a.level}">${a.level === 'warning' ? '⚠' : 'ℹ'} ${a.message}</div>`
+        ).join('');
+      } else {
+        alertsEl.style.display = 'none';
+        alertsEl.innerHTML = '';
+      }
+
+      const invEl = document.getElementById('dashboard-recent-invoices');
+      invEl.innerHTML = d.sales.recent_invoices.length
+        ? d.sales.recent_invoices.map(b => `
+            <div class="recent-row" onclick="switchView('billing'); viewBill(${b.id})">
+              <div>
+                <div class="recent-row-main">${b.invoice_number} · ${b.customer_name}</div>
+                <div class="recent-row-sub">${new Date(b.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short'})} · ${b.payment_status.replace('_',' ')}</div>
+              </div>
+              <div class="recent-row-amount">₹${b.total_amount.toLocaleString()}</div>
+            </div>`).join('')
+        : `<div class="recent-empty">No invoices yet</div>`;
+
+      const purEl = document.getElementById('dashboard-recent-purchases');
+      purEl.innerHTML = d.purchases.recent_purchases.length
+        ? d.purchases.recent_purchases.map(p => `
+            <div class="recent-row" onclick="openPurchaseFromDashboard(${p.id})">
+              <div>
+                <div class="recent-row-main">${p.purchase_number} · ${p.supplier_name}</div>
+                <div class="recent-row-sub">${new Date(p.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short'})}</div>
+              </div>
+              <div class="recent-row-amount">₹${p.total_amount.toLocaleString()}</div>
+            </div>`).join('')
+        : `<div class="recent-empty">No purchases yet</div>`;
     } catch (e) {}
+  }
+
+  async function openPurchaseFromDashboard(id) {
+    switchView('purchases');
+    await loadPurchases();
+    viewPurchase(id);
   }
 
   function sortInventory(col) {
@@ -2536,7 +2696,7 @@
   const views = ['dashboard', 'inventory', 'suppliers', 'customers', 'purchases', 'billing', 'settings'];
   const newLabels = { inventory: '+ NEW ITEM', suppliers: '+ NEW SUPPLIER', customers: '+ NEW CUSTOMER', purchases: '+ NEW PURCHASE', billing: '+ NEW BILL' };
   const addModals = { suppliers: 'add-supplier-modal', customers: 'add-customer-modal' };
-  const loaders = { suppliers: loadSuppliers, customers: loadCustomers, purchases: loadPurchases, billing: loadBills, settings: () => { loadCategories(); loadUnits(); } };
+  const loaders = { dashboard: loadDashboard, suppliers: loadSuppliers, customers: loadCustomers, purchases: loadPurchases, billing: loadBills, settings: () => { loadCategories(); loadUnits(); } };
 
   function switchView(view) {
     currentView = view;
