@@ -29,6 +29,42 @@ class ItemRepository(BaseRepository):
         items = self.db.query(models.Item).filter(models.Item.id.in_(ids)).all()
         return {item.id: item for item in items}
 
+    def apply_stock_change(
+        self,
+        item: models.Item,
+        quantity_change: int,
+        movement_type: str,
+        reference_type: Optional[str] = None,
+        reference_id: Optional[int] = None,
+        note: Optional[str] = None,
+    ) -> models.StockMovement:
+        """Adjusts item.quantity and records the change in the stock ledger
+        as a single unit of work. Caller is responsible for validating the
+        change beforehand (e.g. no-negative-stock) and committing."""
+        quantity_before = item.quantity
+        item.quantity = quantity_before + quantity_change
+        movement = models.StockMovement(
+            item_id=item.id,
+            movement_type=movement_type,
+            quantity_change=quantity_change,
+            quantity_before=quantity_before,
+            quantity_after=item.quantity,
+            reference_type=reference_type,
+            reference_id=reference_id,
+            note=note,
+        )
+        self.db.add(movement)
+        self.db.flush()
+        return movement
+
+    def get_movements(self, item_id: int) -> list[models.StockMovement]:
+        return (
+            self.db.query(models.StockMovement)
+            .filter(models.StockMovement.item_id == item_id)
+            .order_by(models.StockMovement.id.asc())
+            .all()
+        )
+
     def get_stats(self) -> dict:
         """Single SQL query for dashboard stats — no Python-side aggregation."""
         row = self.db.query(

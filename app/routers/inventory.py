@@ -42,6 +42,11 @@ def update_stock(item_id: int, payload: schemas.StockUpdate, service: ItemServic
     return service.update_stock(item_id, payload.quantity_change)
 
 
+@router.get("/items/{item_id}/movements", response_model=list[schemas.StockMovementResponse])
+def get_item_movements(item_id: int, service: ItemService = Depends(get_service)):
+    return service.get_movements(item_id)
+
+
 @router.delete("/items/{item_id}", status_code=204)
 def delete_item(item_id: int, service: ItemService = Depends(get_service)):
     service.delete(item_id)

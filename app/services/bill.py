@@ -33,22 +33,28 @@ class BillService:
         item_ids = [line.item_id for line in data.items]
         items_by_id = self.item_repo.get_by_ids(item_ids)
 
-        # Validate stock for every line before touching anything
         resolved = []
         for line in data.items:
             item = items_by_id.get(line.item_id)
             if not item:
                 raise HTTPException(status_code=404, detail=f"Item id {line.item_id} not found")
-            if item.quantity < line.quantity:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Insufficient stock for '{item.name}': available {item.quantity}, requested {line.quantity}",
-                )
             resolved.append((item, line))
 
-        # Deduct stock
+        # Aggregate requested quantity per item BEFORE validating stock.
+        # Two lines for the same item must be checked against their combined
+        # demand, not validated independently against the same starting
+        # stock level (which would let both pass and drive stock negative).
+        required_by_item: dict[int, int] = {}
         for item, line in resolved:
-            item.quantity -= line.quantity
+            required_by_item[item.id] = required_by_item.get(item.id, 0) + line.quantity
+
+        for item_id, required_qty in required_by_item.items():
+            item = items_by_id[item_id]
+            if item.quantity < required_qty:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Insufficient stock for '{item.name}': available {item.quantity}, requested {required_qty}",
+                )
 
         # Create bill header (TMP number, replaced after flush gives us an id)
         db_bill = models.Bill(
@@ -67,6 +73,11 @@ class BillService:
         taxable_total = 0.0
         igst_total = 0.0
         for item, line in resolved:
+            self.item_repo.apply_stock_change(
+                item, -line.quantity, "SALE",
+                reference_type="bill", reference_id=db_bill.id,
+                note=f"Sold via {db_bill.invoice_number}",
+            )
             taxable = round(line.quantity * line.unit_price, 2)
             gst_rate = item.gst_rate or 0.0
             igst = round(taxable * gst_rate / 100, 2)
@@ -123,7 +134,11 @@ class BillService:
         for line in bill.items:
             item = items_by_id.get(line.item_id)
             if item:
-                item.quantity += line.quantity
+                self.item_repo.apply_stock_change(
+                    item, line.quantity, "SALE_CANCEL",
+                    reference_type="bill", reference_id=bill.id,
+                    note=f"Reversed on cancellation of {bill.invoice_number}",
+                )
             elif line.item_id:
                 # Item existed when the bill was created but has since been deleted
                 warnings.append(

@@ -47,7 +47,11 @@ class PurchaseService:
         for item, line in resolved:
             line_total = round(line.quantity * line.unit_cost, 2)
             total += line_total
-            item.quantity += line.quantity
+            self.item_repo.apply_stock_change(
+                item, line.quantity, "PURCHASE",
+                reference_type="purchase", reference_id=db_bill.id,
+                note=f"Received via {db_bill.purchase_number}",
+            )
             self.purchase_repo.add_item(models.PurchaseBillItem(
                 bill_id=db_bill.id,
                 item_id=item.id,
@@ -95,7 +99,11 @@ class PurchaseService:
         for line in pb.items:
             item = items_by_id.get(line.item_id)
             if item:
-                item.quantity -= line.quantity
+                self.item_repo.apply_stock_change(
+                    item, -line.quantity, "PURCHASE_CANCEL",
+                    reference_type="purchase", reference_id=pb.id,
+                    note=f"Reversed on cancellation of {pb.purchase_number}",
+                )
             elif line.item_id:
                 # Item existed when the purchase was recorded but has since been deleted
                 warnings.append(

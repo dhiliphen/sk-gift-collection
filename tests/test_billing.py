@@ -82,6 +82,84 @@ def test_create_bill_auto_numbers_sequentially(client, sample_item):
     assert num2 == num1 + 1
 
 
+def test_create_bill_aggregates_duplicate_lines_for_stock_check(client, db, sample_item):
+    """Two lines for the same item must be validated against their combined
+    demand. Stock=100 (sample_item); two lines of 60 each (120 total) must
+    be rejected, not silently driving stock negative."""
+    sample_item.quantity = 5
+    db.commit()
+
+    payload = {
+        "customer_name": "Bob",
+        "customer_type": "retailer",
+        "items": [
+            {"item_id": sample_item.id, "quantity": 4, "unit_price": 100.0},
+            {"item_id": sample_item.id, "quantity": 4, "unit_price": 100.0},
+        ],
+    }
+    response = client.post("/api/bills", json=payload, headers=AUTH_HEADERS)
+
+    assert response.status_code == 400
+    assert "Insufficient stock" in response.json()["detail"]
+    assert "8" in response.json()["detail"]  # combined requested quantity
+
+    db.refresh(sample_item)
+    assert sample_item.quantity == 5  # untouched — never went negative
+
+
+def test_create_bill_allows_duplicate_lines_within_combined_stock(client, db, sample_item):
+    sample_item.quantity = 10
+    db.commit()
+
+    payload = {
+        "customer_name": "Bob",
+        "customer_type": "retailer",
+        "items": [
+            {"item_id": sample_item.id, "quantity": 4, "unit_price": 100.0},
+            {"item_id": sample_item.id, "quantity": 4, "unit_price": 100.0},
+        ],
+    }
+    response = client.post("/api/bills", json=payload, headers=AUTH_HEADERS)
+
+    assert response.status_code == 201
+    db.refresh(sample_item)
+    assert sample_item.quantity == 2
+
+
+def test_create_bill_records_stock_ledger_entry(client, db, sample_item):
+    qty = 3
+    response = client.post(
+        "/api/bills",
+        json=_bill_payload(sample_item.id, quantity=qty),
+        headers=AUTH_HEADERS,
+    )
+    bill_id = response.json()["id"]
+
+    movements = client.get(f"/api/items/{sample_item.id}/movements", headers=AUTH_HEADERS).json()
+    sale = [m for m in movements if m["movement_type"] == "SALE"]
+    assert len(sale) == 1
+    assert sale[0]["quantity_change"] == -qty
+    assert sale[0]["reference_type"] == "bill"
+    assert sale[0]["reference_id"] == bill_id
+
+
+def test_cancel_bill_records_reversal_ledger_entry(client, db, sample_item):
+    qty = 3
+    create_resp = client.post(
+        "/api/bills",
+        json=_bill_payload(sample_item.id, quantity=qty),
+        headers=AUTH_HEADERS,
+    )
+    bill_id = create_resp.json()["id"]
+
+    client.patch(f"/api/bills/{bill_id}/cancel", headers=AUTH_HEADERS)
+
+    movements = client.get(f"/api/items/{sample_item.id}/movements", headers=AUTH_HEADERS).json()
+    reversal = [m for m in movements if m["movement_type"] == "SALE_CANCEL"]
+    assert len(reversal) == 1
+    assert reversal[0]["quantity_change"] == qty
+
+
 def test_create_bill_no_items(client):
     payload = {"customer_name": "Bob", "customer_type": "retailer", "items": []}
     response = client.post("/api/bills", json=payload, headers=AUTH_HEADERS)

@@ -458,3 +458,88 @@ def test_update_item_preserves_other_fields(client, sample_item):
     )
     assert response.status_code == 200
     assert response.json()["quantity"] == original_qty
+
+
+# ---------------------------------------------------------------------------
+# Stock ledger
+# ---------------------------------------------------------------------------
+
+def test_create_item_with_opening_stock_records_ledger_entry(client):
+    response = client.post(
+        "/api/items",
+        json={"name": "Ledger Widget", "quantity": 40, "unit": "pcs"},
+        headers=AUTH_HEADERS,
+    )
+    item_id = response.json()["id"]
+
+    movements = client.get(f"/api/items/{item_id}/movements", headers=AUTH_HEADERS).json()
+    assert len(movements) == 1
+    assert movements[0]["movement_type"] == "OPENING_STOCK"
+    assert movements[0]["quantity_change"] == 40
+    assert movements[0]["quantity_before"] == 0
+    assert movements[0]["quantity_after"] == 40
+
+
+def test_create_item_with_zero_stock_records_no_ledger_entry(client):
+    response = client.post("/api/items", json={"name": "Empty Widget"}, headers=AUTH_HEADERS)
+    item_id = response.json()["id"]
+
+    movements = client.get(f"/api/items/{item_id}/movements", headers=AUTH_HEADERS).json()
+    assert movements == []
+
+
+def test_update_stock_records_adjustment_ledger_entry(client, sample_item):
+    client.patch(
+        f"/api/items/{sample_item.id}/stock",
+        json={"quantity_change": -5},
+        headers=AUTH_HEADERS,
+    )
+
+    movements = client.get(f"/api/items/{sample_item.id}/movements", headers=AUTH_HEADERS).json()
+    adjustments = [m for m in movements if m["movement_type"] == "ADJUSTMENT"]
+    assert len(adjustments) == 1
+    assert adjustments[0]["quantity_change"] == -5
+
+
+def test_edit_item_quantity_records_adjustment_ledger_entry(client, sample_item):
+    """Changing quantity via the item edit form (PUT) must still be logged,
+    not silently overwritten outside the ledger."""
+    original_qty = sample_item.quantity
+    response = client.put(
+        f"/api/items/{sample_item.id}",
+        json={"quantity": original_qty + 15},
+        headers=AUTH_HEADERS,
+    )
+    assert response.status_code == 200
+    assert response.json()["quantity"] == original_qty + 15
+
+    movements = client.get(f"/api/items/{sample_item.id}/movements", headers=AUTH_HEADERS).json()
+    assert len(movements) == 1
+    assert movements[0]["movement_type"] == "ADJUSTMENT"
+    assert movements[0]["quantity_change"] == 15
+
+
+def test_edit_item_same_quantity_records_no_ledger_entry(client, sample_item):
+    response = client.put(
+        f"/api/items/{sample_item.id}",
+        json={"quantity": sample_item.quantity, "category": "Same"},
+        headers=AUTH_HEADERS,
+    )
+    assert response.status_code == 200
+
+    movements = client.get(f"/api/items/{sample_item.id}/movements", headers=AUTH_HEADERS).json()
+    assert movements == []
+
+
+def test_movements_not_found_for_missing_item(client):
+    response = client.get("/api/items/999/movements", headers=AUTH_HEADERS)
+    assert response.status_code == 404
+
+
+def test_movements_ordered_chronologically(client, sample_item):
+    client.patch(f"/api/items/{sample_item.id}/stock", json={"quantity_change": 10}, headers=AUTH_HEADERS)
+    client.patch(f"/api/items/{sample_item.id}/stock", json={"quantity_change": -3}, headers=AUTH_HEADERS)
+
+    movements = client.get(f"/api/items/{sample_item.id}/movements", headers=AUTH_HEADERS).json()
+    assert [m["quantity_change"] for m in movements] == [10, -3]
+    assert movements[0]["quantity_after"] == movements[1]["quantity_before"]

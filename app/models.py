@@ -127,3 +127,22 @@ class Item(Base):
     low_stock_threshold = Column(Integer, default=10)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+
+class StockMovement(Base):
+    """Append-only ledger of every stock change. item.quantity is a fast
+    running total; this table is the historical source of truth it must
+    always reconcile with."""
+    __tablename__ = "stock_movements"
+
+    id = Column(Integer, primary_key=True, index=True)
+    item_id = Column(Integer, ForeignKey("inventory.id"), nullable=False, index=True)
+    movement_type = Column(String(20), nullable=False)
+    # OPENING_STOCK | PURCHASE | PURCHASE_CANCEL | SALE | SALE_CANCEL | ADJUSTMENT
+    quantity_change = Column(Integer, nullable=False)   # signed: + increases stock, - decreases
+    quantity_before = Column(Integer, nullable=False)
+    quantity_after = Column(Integer, nullable=False)
+    reference_type = Column(String(20), nullable=True)  # bill | purchase | item_create | item_edit
+    reference_id = Column(Integer, nullable=True)
+    note = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())

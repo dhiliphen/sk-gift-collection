@@ -24,15 +24,35 @@ class ItemService:
     def create(self, data: schemas.ItemCreate) -> models.Item:
         if self.repo.get_by_name(data.name):
             raise HTTPException(status_code=400, detail="Item with this name already exists")
-        item = models.Item(**data.model_dump())
+        payload = data.model_dump()
+        opening_qty = payload.pop("quantity", 0) or 0
+        item = models.Item(**payload, quantity=0)
         self.repo.save(item)
+        if opening_qty:
+            self.repo.apply_stock_change(
+                item, opening_qty, "OPENING_STOCK",
+                reference_type="item_create", reference_id=item.id,
+                note="Opening stock recorded at item creation",
+            )
         self.repo.commit()
         return self.repo.refresh(item)
 
     def update(self, item_id: int, data: schemas.ItemUpdate) -> models.Item:
         item = self.get_by_id(item_id)
-        for field, value in data.model_dump(exclude_unset=True).items():
+        updates = data.model_dump(exclude_unset=True)
+        quantity_change = None
+        if "quantity" in updates:
+            new_qty = updates.pop("quantity")
+            if new_qty != item.quantity:
+                quantity_change = new_qty - item.quantity
+        for field, value in updates.items():
             setattr(item, field, value)
+        if quantity_change is not None:
+            self.repo.apply_stock_change(
+                item, quantity_change, "ADJUSTMENT",
+                reference_type="item_edit", reference_id=item.id,
+                note="Manual quantity correction via item edit",
+            )
         self.repo.commit()
         return self.repo.refresh(item)
 
@@ -41,7 +61,11 @@ class ItemService:
         new_qty = item.quantity + quantity_change
         if new_qty < 0:
             raise HTTPException(status_code=400, detail="Stock cannot go below zero")
-        item.quantity = new_qty
+        self.repo.apply_stock_change(
+            item, quantity_change, "ADJUSTMENT",
+            reference_type="adjustment", reference_id=item.id,
+            note="Manual stock adjustment",
+        )
         self.repo.commit()
         return self.repo.refresh(item)
 
@@ -52,3 +76,7 @@ class ItemService:
 
     def get_stats(self) -> dict:
         return self.repo.get_stats()
+
+    def get_movements(self, item_id: int) -> list[models.StockMovement]:
+        self.get_by_id(item_id)  # 404 if missing
+        return self.repo.get_movements(item_id)

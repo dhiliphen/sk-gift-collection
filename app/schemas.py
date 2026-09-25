@@ -232,6 +232,22 @@ class StockUpdate(BaseModel):
     quantity_change: int = Field(..., description="Positive to add, negative to deduct")
 
 
+class StockMovementResponse(BaseModel):
+    id: int
+    item_id: int
+    movement_type: str
+    quantity_change: int
+    quantity_before: int
+    quantity_after: int
+    reference_type: Optional[str]
+    reference_id: Optional[int]
+    note: Optional[str]
+    created_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
 class ItemResponse(BaseModel):
     id: int
     name: str

@@ -437,3 +437,65 @@ def test_regression_amb003_purchase_cancel_with_deleted_item_warns(client, db, s
     # Stock for the surviving item (sample_item_b) must be reversed correctly
     db.refresh(sample_item_b)
     assert sample_item_b.quantity == orig_b
+
+
+def test_create_purchase_records_stock_ledger_entry(client, db, sample_item):
+    qty = 30
+    response = client.post(
+        "/api/purchases",
+        json=_purchase_payload(sample_item.id, quantity=qty),
+        headers=AUTH_HEADERS,
+    )
+    purchase_id = response.json()["id"]
+
+    movements = client.get(f"/api/items/{sample_item.id}/movements", headers=AUTH_HEADERS).json()
+    purchase_moves = [m for m in movements if m["movement_type"] == "PURCHASE"]
+    assert len(purchase_moves) == 1
+    assert purchase_moves[0]["quantity_change"] == qty
+    assert purchase_moves[0]["reference_type"] == "purchase"
+    assert purchase_moves[0]["reference_id"] == purchase_id
+
+
+def test_cancel_purchase_records_reversal_ledger_entry(client, db, sample_item):
+    qty = 30
+    create_resp = client.post(
+        "/api/purchases",
+        json=_purchase_payload(sample_item.id, quantity=qty),
+        headers=AUTH_HEADERS,
+    )
+    purchase_id = create_resp.json()["id"]
+
+    client.patch(f"/api/purchases/{purchase_id}/cancel", headers=AUTH_HEADERS)
+
+    movements = client.get(f"/api/items/{sample_item.id}/movements", headers=AUTH_HEADERS).json()
+    reversal = [m for m in movements if m["movement_type"] == "PURCHASE_CANCEL"]
+    assert len(reversal) == 1
+    assert reversal[0]["quantity_change"] == -qty
+
+
+def test_stock_ledger_reconciles_with_current_quantity(client, db, sample_item):
+    """Invariant: replaying the ledger chain from its first quantity_before
+    must land on the item's current on-hand quantity, with each entry's
+    before/after linking to the next."""
+    client.post("/api/purchases", json=_purchase_payload(sample_item.id, quantity=20), headers=AUTH_HEADERS)
+    client.post(
+        "/api/bills",
+        json={
+            "customer_name": "Bob", "customer_type": "retailer",
+            "items": [{"item_id": sample_item.id, "quantity": 5, "unit_price": 10.0}],
+        },
+        headers=AUTH_HEADERS,
+    )
+    client.patch(f"/api/items/{sample_item.id}/stock", json={"quantity_change": -3}, headers=AUTH_HEADERS)
+
+    db.refresh(sample_item)
+    movements = client.get(f"/api/items/{sample_item.id}/movements", headers=AUTH_HEADERS).json()
+
+    running = movements[0]["quantity_before"]
+    for m in movements:
+        assert m["quantity_before"] == running
+        running += m["quantity_change"]
+        assert running == m["quantity_after"]
+
+    assert running == sample_item.quantity
+    assert movements[-1]["quantity_after"] == sample_item.quantity
