@@ -1,8 +1,13 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
+
+# Fixed-precision type for all money and rate columns. SQLAlchemy's sqlite
+# dialect stores Numeric values as text and returns Python Decimal on read,
+# so amounts never pass through binary float representation.
+MONEY = Numeric(12, 2)
 
 
 class PurchaseBill(Base):
@@ -13,7 +18,7 @@ class PurchaseBill(Base):
     supplier_name = Column(String(100), nullable=False)
     supplier_invoice = Column(String(50), nullable=True)   # supplier's own ref number
     status = Column(String(20), default="received")        # received | cancelled
-    total_amount = Column(Float, default=0.0)
+    total_amount = Column(MONEY, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     items = relationship("PurchaseBillItem", back_populates="bill", cascade="all, delete-orphan")
@@ -28,8 +33,8 @@ class PurchaseBillItem(Base):
     item_name = Column(String(100), nullable=False)
     unit = Column(String(20), nullable=True)
     quantity = Column(Integer, nullable=False)
-    unit_cost = Column(Float, nullable=False)
-    line_total = Column(Float, nullable=False)
+    unit_cost = Column(MONEY, nullable=False)
+    line_total = Column(MONEY, nullable=False)
 
     bill = relationship("PurchaseBill", back_populates="items")
 
@@ -56,10 +61,10 @@ class Bill(Base):
     customer_phone = Column(String(20), nullable=True)
     status = Column(String(20), default="paid")  # paid | cancelled — document lifecycle, NOT payment state
     customer_type = Column(String(20), default="retailer")  # wholesaler | dealer | retailer
-    taxable_amount = Column(Float, default=0.0)
-    igst_amount = Column(Float, default=0.0)
-    total_amount = Column(Float, default=0.0)
-    amount_paid = Column(Float, default=0.0, nullable=False)
+    taxable_amount = Column(MONEY, default=0)
+    igst_amount = Column(MONEY, default=0)
+    total_amount = Column(MONEY, default=0)
+    amount_paid = Column(MONEY, default=0, nullable=False)
     # payment_state: unpaid | partially_paid | paid — reflects money actually
     # received. "overdue" and "cancelled" are derived at read time, not stored,
     # so they never go stale as time passes without a write.
@@ -71,7 +76,7 @@ class Bill(Base):
     payments = relationship("Payment", back_populates="bill", cascade="all, delete-orphan")
 
     @property
-    def balance_due(self) -> float:
+    def balance_due(self):
         return round(self.total_amount - self.amount_paid, 2)
 
     @property
@@ -96,11 +101,11 @@ class BillItem(Base):
     hsn_code = Column(String(20), nullable=True)
     unit = Column(String(20), nullable=True)
     quantity = Column(Integer, nullable=False)
-    unit_price = Column(Float, nullable=False)
-    gst_rate = Column(Float, default=0.0)
-    taxable_amount = Column(Float, nullable=False)
-    igst_amount = Column(Float, default=0.0)
-    line_total = Column(Float, nullable=False)
+    unit_price = Column(MONEY, nullable=False)
+    gst_rate = Column(MONEY, default=0)
+    taxable_amount = Column(MONEY, nullable=False)
+    igst_amount = Column(MONEY, default=0)
+    line_total = Column(MONEY, nullable=False)
 
     bill = relationship("Bill", back_populates="items")
 
@@ -112,7 +117,7 @@ class Payment(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     bill_id = Column(Integer, ForeignKey("bills.id"), nullable=False, index=True)
-    amount = Column(Float, nullable=False)
+    amount = Column(MONEY, nullable=False)
     payment_method = Column(String(20), nullable=False, default="cash")
     reference_number = Column(String(50), nullable=True)
     notes = Column(String(255), nullable=True)
@@ -159,12 +164,12 @@ class Item(Base):
     supplier = Column(String(100), nullable=True)
     quantity = Column(Integer, default=0, nullable=False)
     unit = Column(String(20), default="pcs")
-    wholesale_price = Column(Float, default=0.0)
-    dealer_price = Column(Float, default=0.0)
-    selling_price = Column(Float, default=0.0)
-    cost_price = Column(Float, default=0.0)
+    wholesale_price = Column(MONEY, default=0)
+    dealer_price = Column(MONEY, default=0)
+    selling_price = Column(MONEY, default=0)
+    cost_price = Column(MONEY, default=0)
     hsn_code = Column(String(20), nullable=True)
-    gst_rate = Column(Float, default=0.0)
+    gst_rate = Column(MONEY, default=0)
     low_stock_threshold = Column(Integer, default=10)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

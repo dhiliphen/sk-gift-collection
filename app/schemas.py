@@ -1,12 +1,14 @@
+from decimal import Decimal
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
+from app.money import Money
 
 
 class PurchaseItemCreate(BaseModel):
     item_id: int
     quantity: int = Field(..., gt=0)
-    unit_cost: float = Field(..., ge=0)
+    unit_cost: Money = Field(..., ge=0)
 
 
 class PurchaseCreate(BaseModel):
@@ -21,8 +23,8 @@ class PurchaseItemResponse(BaseModel):
     item_name: str
     unit: Optional[str]
     quantity: int
-    unit_cost: float
-    line_total: float
+    unit_cost: Money
+    line_total: Money
 
     class Config:
         from_attributes = True
@@ -34,7 +36,7 @@ class PurchaseResponse(BaseModel):
     supplier_name: str
     supplier_invoice: Optional[str]
     status: str
-    total_amount: float
+    total_amount: Money
     created_at: Optional[datetime]
     items: List[PurchaseItemResponse] = []
 
@@ -75,7 +77,7 @@ class CustomerResponse(BaseModel):
 class BillItemCreate(BaseModel):
     item_id: int
     quantity: int = Field(..., gt=0)
-    unit_price: float = Field(..., ge=0)
+    unit_price: Money = Field(..., ge=0)
 
 
 _PAYMENT_METHOD_PATTERN = "^(cash|upi|card|bank_transfer|cheque|other)$"
@@ -90,7 +92,7 @@ class BillCreate(BaseModel):
     # total (the app's original cash-sale behavior) when omitted, so existing
     # callers keep working unchanged. Pass a smaller amount to record a
     # partial/credit sale.
-    amount_paid: Optional[float] = Field(default=None, ge=0)
+    amount_paid: Optional[Money] = Field(default=None, ge=0)
     payment_method: str = Field(default="cash", pattern=_PAYMENT_METHOD_PATTERN)
     payment_reference: Optional[str] = None
     due_date: Optional[datetime] = None
@@ -103,11 +105,11 @@ class BillItemResponse(BaseModel):
     hsn_code: Optional[str]
     unit: Optional[str]
     quantity: int
-    unit_price: float
-    gst_rate: float
-    taxable_amount: float
-    igst_amount: float
-    line_total: float
+    unit_price: Money
+    gst_rate: Money
+    taxable_amount: Money
+    igst_amount: Money
+    line_total: Money
 
     class Config:
         from_attributes = True
@@ -120,11 +122,11 @@ class BillResponse(BaseModel):
     customer_phone: Optional[str]
     customer_type: str
     status: str
-    taxable_amount: float
-    igst_amount: float
-    total_amount: float
-    amount_paid: float
-    balance_due: float
+    taxable_amount: Money
+    igst_amount: Money
+    total_amount: Money
+    amount_paid: Money
+    balance_due: Money
     payment_status: str
     due_date: Optional[datetime]
     created_at: Optional[datetime]
@@ -136,7 +138,7 @@ class BillResponse(BaseModel):
 
 
 class PaymentCreate(BaseModel):
-    amount: float = Field(..., gt=0)
+    amount: Money = Field(..., gt=0)
     payment_method: str = Field(default="cash", pattern=_PAYMENT_METHOD_PATTERN)
     reference_number: Optional[str] = None
     notes: Optional[str] = None
@@ -146,7 +148,7 @@ class PaymentCreate(BaseModel):
 class PaymentResponse(BaseModel):
     id: int
     bill_id: int
-    amount: float
+    amount: Money
     payment_method: str
     reference_number: Optional[str]
     notes: Optional[str]
@@ -242,12 +244,12 @@ class ItemCreate(BaseModel):
     supplier: Optional[str] = None
     quantity: int = Field(default=0, ge=0)
     unit: str = Field(default="pcs")
-    cost_price: float = Field(default=0.0, ge=0)
-    wholesale_price: float = Field(default=0.0, ge=0)
-    dealer_price: float = Field(default=0.0, ge=0)
-    selling_price: float = Field(default=0.0, ge=0)
+    cost_price: Money = Field(default=Decimal("0"), ge=0)
+    wholesale_price: Money = Field(default=Decimal("0"), ge=0)
+    dealer_price: Money = Field(default=Decimal("0"), ge=0)
+    selling_price: Money = Field(default=Decimal("0"), ge=0)
     hsn_code: Optional[str] = None
-    gst_rate: float = Field(default=0.0, ge=0)
+    gst_rate: Money = Field(default=Decimal("0"), ge=0)
     low_stock_threshold: int = Field(default=10, ge=0)
 
 
@@ -257,12 +259,12 @@ class ItemUpdate(BaseModel):
     supplier: Optional[str] = None
     quantity: Optional[int] = Field(None, ge=0)
     unit: Optional[str] = None
-    cost_price: Optional[float] = Field(None, ge=0)
-    wholesale_price: Optional[float] = Field(None, ge=0)
-    dealer_price: Optional[float] = Field(None, ge=0)
-    selling_price: Optional[float] = Field(None, ge=0)
+    cost_price: Optional[Money] = Field(None, ge=0)
+    wholesale_price: Optional[Money] = Field(None, ge=0)
+    dealer_price: Optional[Money] = Field(None, ge=0)
+    selling_price: Optional[Money] = Field(None, ge=0)
     hsn_code: Optional[str] = None
-    gst_rate: Optional[float] = Field(None, ge=0)
+    gst_rate: Optional[Money] = Field(None, ge=0)
     low_stock_threshold: Optional[int] = Field(None, ge=0)
 
 
@@ -293,12 +295,12 @@ class ItemResponse(BaseModel):
     supplier: Optional[str]
     quantity: int
     unit: str
-    cost_price: float
-    wholesale_price: float
-    dealer_price: float
-    selling_price: float
+    cost_price: Money
+    wholesale_price: Money
+    dealer_price: Money
+    selling_price: Money
     hsn_code: Optional[str]
-    gst_rate: float
+    gst_rate: Money
     low_stock_threshold: int
     created_at: Optional[datetime]
     updated_at: Optional[datetime]

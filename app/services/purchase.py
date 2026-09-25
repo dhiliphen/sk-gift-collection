@@ -1,3 +1,4 @@
+from decimal import Decimal
 from fastapi import HTTPException
 from app import models, schemas
 from app.repositories.purchase import PurchaseRepository
@@ -38,12 +39,12 @@ class PurchaseService:
             supplier_name=data.supplier_name,
             supplier_invoice=data.supplier_invoice,
             status="received",
-            total_amount=0.0,
+            total_amount=Decimal("0"),
         )
         self.purchase_repo.save(db_bill)
         db_bill.purchase_number = f"PUR-{db_bill.id:04d}"
 
-        total = 0.0
+        total = Decimal("0")
         for item, line in resolved:
             line_total = round(line.quantity * line.unit_cost, 2)
             total += line_total

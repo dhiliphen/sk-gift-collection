@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -9,6 +10,7 @@ from app.repositories.bill import BillRepository
 from app.repositories.item import ItemRepository
 from app.repositories.payment import PaymentRepository
 from app.services.bill import BillService
+from app.services.tax import split_cgst_sgst
 from app.utils import amount_in_words
 
 _base = os.environ.get('BASE_DIR', os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -83,19 +85,19 @@ def print_bill(bill_id: int, request: Request, service: BillService = Depends(ge
 
     hsn_map = {}
     for line in bill.items:
-        key = (line.hsn_code or '', line.gst_rate or 0.0)
+        key = (line.hsn_code or '', line.gst_rate or Decimal("0"))
         if key not in hsn_map:
-            hsn_map[key] = {"hsn": line.hsn_code or '', "gst_rate": line.gst_rate or 0.0, "taxable": 0.0}
+            hsn_map[key] = {"hsn": line.hsn_code or '', "gst_rate": line.gst_rate or Decimal("0"), "taxable": Decimal("0")}
         hsn_map[key]["taxable"] += line.taxable_amount
 
     tax_rows = []
     for (hsn, gst_rate), row in hsn_map.items():
-        half = round(row["taxable"] * gst_rate / 100 / 2, 2)
+        split = split_cgst_sgst(row["taxable"], gst_rate)
         tax_rows.append({
             "hsn": hsn, "gst_rate": gst_rate,
             "taxable": round(row["taxable"], 2),
-            "cgst": half, "sgst": half,
-            "total_tax": round(half * 2, 2),
+            "cgst": split["cgst"], "sgst": split["sgst"],
+            "total_tax": split["total_tax"],
         })
 
     return _templates.TemplateResponse("print_invoice.html", {

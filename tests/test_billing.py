@@ -38,7 +38,7 @@ def test_create_bill_success(client, sample_item):
 
     bill_item = data["items"][0]
     expected_taxable = round(qty * unit_price, 2)
-    expected_igst = round(expected_taxable * sample_item.gst_rate / 100, 2)
+    expected_igst = round(expected_taxable * float(sample_item.gst_rate) / 100, 2)
     expected_total = round(expected_taxable + expected_igst, 2)
 
     assert bill_item["taxable_amount"] == expected_taxable

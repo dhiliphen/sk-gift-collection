@@ -1,8 +1,10 @@
+from decimal import Decimal
 from fastapi import HTTPException
 from app import models, schemas
 from app.repositories.bill import BillRepository
 from app.repositories.item import ItemRepository
 from app.repositories.payment import PaymentRepository
+from app.services.tax import calculate_line_tax
 
 
 class BillService:
@@ -22,7 +24,7 @@ class BillService:
     def _record_payment(
         self,
         bill: models.Bill,
-        amount: float,
+        amount: Decimal,
         method: str,
         reference: str | None = None,
         notes: str | None = None,
@@ -96,26 +98,25 @@ class BillService:
             customer_phone=data.customer_phone,
             customer_type=data.customer_type,
             status="paid",
-            taxable_amount=0.0,
-            igst_amount=0.0,
-            total_amount=0.0,
+            taxable_amount=Decimal("0"),
+            igst_amount=Decimal("0"),
+            total_amount=Decimal("0"),
         )
         self.bill_repo.save(db_bill)
         db_bill.invoice_number = f"INV-{db_bill.id:04d}"
 
-        taxable_total = 0.0
-        igst_total = 0.0
+        taxable_total = Decimal("0")
+        igst_total = Decimal("0")
         for item, line in resolved:
             self.item_repo.apply_stock_change(
                 item, -line.quantity, "SALE",
                 reference_type="bill", reference_id=db_bill.id,
                 note=f"Sold via {db_bill.invoice_number}",
             )
-            taxable = round(line.quantity * line.unit_price, 2)
-            gst_rate = item.gst_rate or 0.0
-            igst = round(taxable * gst_rate / 100, 2)
-            taxable_total += taxable
-            igst_total += igst
+            gst_rate = item.gst_rate or Decimal("0")
+            tax = calculate_line_tax(line.quantity, line.unit_price, gst_rate)
+            taxable_total += tax["taxable_amount"]
+            igst_total += tax["tax_amount"]
             self.bill_repo.add_item(models.BillItem(
                 bill_id=db_bill.id,
                 item_id=item.id,
@@ -125,9 +126,9 @@ class BillService:
                 quantity=line.quantity,
                 unit_price=line.unit_price,
                 gst_rate=gst_rate,
-                taxable_amount=taxable,
-                igst_amount=igst,
-                line_total=round(taxable + igst, 2),
+                taxable_amount=tax["taxable_amount"],
+                igst_amount=tax["tax_amount"],
+                line_total=tax["line_total"],
             ))
 
         db_bill.taxable_amount = round(taxable_total, 2)
@@ -143,7 +144,7 @@ class BillService:
                 detail=f"Amount paid (₹{requested_paid:.2f}) cannot exceed invoice total (₹{db_bill.total_amount:.2f})",
             )
         db_bill.due_date = data.due_date
-        db_bill.amount_paid = 0.0
+        db_bill.amount_paid = Decimal("0")
         db_bill.payment_state = "unpaid"
         if requested_paid > 0:
             self._record_payment(
@@ -160,7 +161,7 @@ class BillService:
         warnings = []
         if price_field:
             for item, line in resolved:
-                expected = getattr(item, price_field, 0.0) or 0.0
+                expected = getattr(item, price_field, None) or Decimal("0")
                 if expected > 0 and round(line.unit_price, 2) != round(expected, 2):
                     warnings.append(
                         f"'{item.name}': billed at ₹{line.unit_price:.2f} but standard "
