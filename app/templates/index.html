@@ -980,6 +980,26 @@
   .status-badge.unpaid { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
   .status-badge.overdue { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
   .status-badge.partially_paid { background: var(--info-dim); color: var(--info); border: 1px solid var(--info); }
+  .status-badge.role-admin { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
+  .status-badge.role-other { background: var(--surface2); color: var(--text-muted); border: 1px solid var(--border); }
+  .status-badge.inactive { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
+
+  .current-user-label {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+    margin-right: 0.25rem;
+  }
+
+  .audit-detail {
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    max-width: 320px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
 
   .bill-line-item {
     display: grid;
@@ -1291,6 +1311,7 @@
       <button class="theme-btn" id="theme-white"  onclick="setTheme('white')"  title="White">W</button>
       <button class="theme-btn active" id="theme-sandal" onclick="setTheme('sandal')" title="Sandal">S</button>
     </div>
+    <span class="current-user-label" id="current-user-label"></span>
     <button class="btn btn-ghost" onclick="openSettings()" title="Business Settings" style="letter-spacing:1px;">⚙ SETTINGS</button>
     <form method="post" action="/logout" style="margin:0;">
       <button type="submit" class="btn btn-ghost" style="letter-spacing:1px;" title="Sign out">⏻ LOGOUT</button>
@@ -1392,6 +1413,56 @@
         <div class="dash-card-label">Settings</div>
         <div class="dash-card-desc">Manage product categories and units of measure.</div>
         <div class="dash-card-link">Open Settings →</div>
+      </div>
+      <div class="dash-card" id="dash-card-audit" onclick="switchView('audit')" style="display:none;">
+        <div class="dash-card-label">Audit Log</div>
+        <div class="dash-card-desc">Review who did what — logins, sales, purchases, inventory changes.</div>
+        <div class="dash-card-link">View Audit Log →</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- AUDIT LOG VIEW -->
+<div id="view-audit" class="view">
+  <div class="page-view">
+    <div class="page-view-header">
+      <div>
+        <button class="back-btn" onclick="switchView('dashboard')">← Dashboard</button>
+        <div class="page-view-title">Audit Log</div>
+        <div class="page-view-subtitle">Who did what, and when</div>
+      </div>
+      <select id="audit-action-filter" onchange="loadAuditLog()" style="max-width:220px;">
+        <option value="">All actions</option>
+        <option value="LOGIN_SUCCESS">Login</option>
+        <option value="LOGIN_FAILURE">Login failure</option>
+        <option value="LOGOUT">Logout</option>
+        <option value="CREATE_ITEM">Create item</option>
+        <option value="UPDATE_ITEM">Update item</option>
+        <option value="DELETE_ITEM">Delete item</option>
+        <option value="STOCK_ADJUSTMENT">Stock adjustment</option>
+        <option value="CREATE_CUSTOMER">Create customer</option>
+        <option value="CREATE_SUPPLIER">Create supplier</option>
+        <option value="CREATE_PURCHASE">Create purchase</option>
+        <option value="CANCEL_PURCHASE">Cancel purchase</option>
+        <option value="CREATE_INVOICE">Create invoice</option>
+        <option value="CANCEL_INVOICE">Cancel invoice</option>
+        <option value="CREATE_PAYMENT">Record payment</option>
+        <option value="CANCEL_PAYMENT">Void payment</option>
+        <option value="CREATE_USER">Create user</option>
+        <option value="UPDATE_USER">Update user</option>
+      </select>
+    </div>
+    <div class="page-view-card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Time</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th></tr>
+          </thead>
+          <tbody id="audit-table">
+            <tr><td colspan="5"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading...</div></div></td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -1524,8 +1595,60 @@
         </div>
       </div>
     </div>
+    <div id="settings-users-section" style="display:none; padding: 0 2rem 2rem;">
+      <div class="page-view-card">
+        <div class="settings-section-header" style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--border);">
+          <div class="settings-section-title">Users</div>
+          <button class="btn btn-primary" onclick="openAddUser()">+ Add User</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Username</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody id="users-table">
+              <tr><td colspan="5"><div class="empty-state"><div class="empty-icon">[  ]</div><div>Loading...</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </div><!-- end view-settings -->
+
+<!-- ADD USER MODAL -->
+<div class="modal-overlay" id="add-user-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add User</div>
+      <button class="modal-close" onclick="closeModal('add-user-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Username *</label>
+        <input type="text" id="user-username" placeholder="e.g. rakesh">
+      </div>
+      <div class="form-group">
+        <label>Password *</label>
+        <input type="password" id="user-password" placeholder="At least 6 characters">
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select id="user-role">
+          <option value="VIEWER" selected>Viewer (read-only)</option>
+          <option value="SALES">Sales</option>
+          <option value="PURCHASE">Purchase</option>
+          <option value="INVENTORY">Inventory</option>
+          <option value="ACCOUNTANT">Accountant</option>
+          <option value="MANAGER">Manager</option>
+          <option value="ADMIN">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('add-user-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addUser()">ADD USER</button>
+    </div>
+  </div>
+</div>
 
 <!-- CUSTOMERS VIEW -->
 <div id="view-customers" class="view">
@@ -2693,10 +2816,15 @@
 
   // ── View Switching ───────────────────────────────────────
   let currentView = 'dashboard';
-  const views = ['dashboard', 'inventory', 'suppliers', 'customers', 'purchases', 'billing', 'settings'];
+  const views = ['dashboard', 'inventory', 'suppliers', 'customers', 'purchases', 'billing', 'settings', 'audit'];
   const newLabels = { inventory: '+ NEW ITEM', suppliers: '+ NEW SUPPLIER', customers: '+ NEW CUSTOMER', purchases: '+ NEW PURCHASE', billing: '+ NEW BILL' };
   const addModals = { suppliers: 'add-supplier-modal', customers: 'add-customer-modal' };
-  const loaders = { dashboard: loadDashboard, suppliers: loadSuppliers, customers: loadCustomers, purchases: loadPurchases, billing: loadBills, settings: () => { loadCategories(); loadUnits(); } };
+  const loaders = {
+    dashboard: loadDashboard, suppliers: loadSuppliers, customers: loadCustomers,
+    purchases: loadPurchases, billing: loadBills,
+    settings: () => { loadCategories(); loadUnits(); if (currentUser && currentUser.role === 'ADMIN') loadUsers(); },
+    audit: loadAuditLog,
+  };
 
   function switchView(view) {
     currentView = view;
@@ -3924,11 +4052,151 @@
     document.getElementById('font-label').textContent = savedFont + 'px';
   })();
 
+  // ── Current user / RBAC ──────────────────────────────────
+  let currentUser = null;
+
+  async function loadCurrentUser() {
+    try {
+      const res = await fetch('/api/users/me');
+      if (!res.ok) return;
+      currentUser = await res.json();
+      applyRoleUI();
+    } catch (e) {}
+  }
+
+  function applyRoleUI() {
+    if (!currentUser) return;
+    const label = document.getElementById('current-user-label');
+    if (label) label.textContent = `${currentUser.username} (${currentUser.role})`;
+    const isAdmin = currentUser.role === 'ADMIN';
+    const auditCard = document.getElementById('dash-card-audit');
+    if (auditCard) auditCard.style.display = isAdmin ? '' : 'none';
+    const usersSection = document.getElementById('settings-users-section');
+    if (usersSection) usersSection.style.display = isAdmin ? '' : 'none';
+  }
+
+  // ── Users management (Admin only) ───────────────────────
+  let allUsersList = [];
+
+  async function loadUsers() {
+    try {
+      const res = await fetch('/api/users');
+      if (!res.ok) return; // non-admin — section is hidden anyway
+      allUsersList = await res.json();
+      renderUsers(allUsersList);
+    } catch (e) {}
+  }
+
+  function renderUsers(userList) {
+    const tbody = document.getElementById('users-table');
+    if (!tbody) return;
+    if (!userList.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No users yet</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = userList.map((u, i) => `
+      <tr>
+        <td class="muted">${i + 1}</td>
+        <td><div class="item-name">${u.username}</div></td>
+        <td><span class="status-badge ${u.role === 'ADMIN' ? 'role-admin' : 'role-other'}">${u.role}</span></td>
+        <td><span class="status-badge ${u.is_active ? 'paid' : 'inactive'}">${u.is_active ? 'ACTIVE' : 'DISABLED'}</span></td>
+        <td><div class="actions">
+          <button class="btn btn-ghost" onclick="toggleUserActive(${u.id}, ${u.is_active})">${u.is_active ? 'DISABLE' : 'ENABLE'}</button>
+        </div></td>
+      </tr>`).join('');
+  }
+
+  function openAddUser() {
+    document.getElementById('user-username').value = '';
+    document.getElementById('user-password').value = '';
+    document.getElementById('user-role').value = 'VIEWER';
+    document.getElementById('add-user-modal').classList.add('active');
+  }
+
+  async function addUser() {
+    const username = document.getElementById('user-username').value.trim();
+    const password = document.getElementById('user-password').value;
+    const role = document.getElementById('user-role').value;
+    if (!username) { showToast('Username is required', 'error'); return; }
+    if (!password || password.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password, role })
+      });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error adding user', 'error'); return; }
+      closeModal('add-user-modal');
+      await loadUsers();
+      showToast('User added');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function toggleUserActive(id, isActive) {
+    const verb = isActive ? 'disable' : 'enable';
+    if (!confirm(`${verb.charAt(0).toUpperCase() + verb.slice(1)} this user?`)) return;
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_active: !isActive })
+      });
+      if (!res.ok) { showToast('Error updating user', 'error'); return; }
+      await loadUsers();
+      showToast(`User ${verb}d`);
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  // ── Audit Log (Admin only) ───────────────────────────────
+  async function loadAuditLog() {
+    const tbody = document.getElementById('audit-table');
+    if (!tbody) return;
+    const action = document.getElementById('audit-action-filter').value;
+    try {
+      const res = await fetch('/api/audit-log' + (action ? `?action=${action}` : ''));
+      if (!res.ok) {
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">[  ]</div><div>You don't have permission to view this</div></div></td></tr>`;
+        return;
+      }
+      renderAuditLog(await res.json());
+    } catch (e) {}
+  }
+
+  function renderAuditLog(entries) {
+    const tbody = document.getElementById('audit-table');
+    if (!entries.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No activity recorded yet</div></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = entries.map(e => `
+      <tr>
+        <td style="font-family:var(--mono); font-size:0.75rem; white-space:nowrap;">${new Date(e.created_at).toLocaleString('en-IN')}</td>
+        <td>${e.username || '—'}</td>
+        <td style="font-family:var(--mono); font-size:0.75rem;">${e.action}</td>
+        <td style="color:var(--text-muted); font-size:0.8rem;">${e.entity_type ? `${e.entity_type} #${e.entity_id ?? ''}` : '—'}</td>
+        <td><div class="audit-detail">${_auditDetail(e)}</div></td>
+      </tr>`).join('');
+  }
+
+  function _auditDetail(e) {
+    if (!e.old_value && !e.new_value) return '—';
+    const parts = [];
+    if (e.old_value) parts.push('before: ' + _shorten(e.old_value));
+    if (e.new_value) parts.push('after: ' + _shorten(e.new_value));
+    return parts.join('\n');
+  }
+
+  function _shorten(jsonStr) {
+    return jsonStr.length > 160 ? jsonStr.slice(0, 160) + '…' : jsonStr;
+  }
+
   // Init
   loadInventory();
   loadDropdowns();
   loadSuppliers();
   loadCustomers();
+  loadCurrentUser();
 </script>
 </body>
 </html>

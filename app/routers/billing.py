@@ -6,6 +6,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import schemas
+from app.auth import get_current_username
+from app.audit import record
 from app.repositories.bill import BillRepository
 from app.repositories.item import ItemRepository
 from app.repositories.payment import PaymentRepository
@@ -45,16 +47,30 @@ def get_bill(bill_id: int, service: BillService = Depends(get_service)):
 
 
 @router.post("", response_model=schemas.BillResponse, status_code=201)
-def create_bill(bill: schemas.BillCreate, service: BillService = Depends(get_service)):
+def create_bill(
+    bill: schemas.BillCreate,
+    db: Session = Depends(get_db),
+    service: BillService = Depends(get_service),
+    username: str = Depends(get_current_username),
+):
     bill_obj, warnings = service.create(bill)
     data = schemas.BillResponse.model_validate(bill_obj).model_dump()
     data["warnings"] = warnings
+    record(db, username, "CREATE_INVOICE", "bill", bill_obj.id, new_value=data)
     return data
 
 
 @router.patch("/{bill_id}/cancel", response_model=schemas.BillCancelResponse)
-def cancel_bill(bill_id: int, service: BillService = Depends(get_service)):
+def cancel_bill(
+    bill_id: int,
+    db: Session = Depends(get_db),
+    service: BillService = Depends(get_service),
+    username: str = Depends(get_current_username),
+):
+    old = schemas.BillResponse.model_validate(service.get_by_id(bill_id)).model_dump(mode="json")
     bill, warnings = service.cancel(bill_id)
+    record(db, username, "CANCEL_INVOICE", "bill", bill_id,
+           old_value=old, new_value=schemas.BillResponse.model_validate(bill).model_dump(mode="json"))
     return {"bill": bill, "warnings": warnings}
 
 
@@ -64,18 +80,33 @@ def get_bill_payments(bill_id: int, service: BillService = Depends(get_service))
 
 
 @router.post("/{bill_id}/payments", response_model=schemas.BillResponse, status_code=201)
-def add_bill_payment(bill_id: int, payment: schemas.PaymentCreate, service: BillService = Depends(get_service)):
+def add_bill_payment(
+    bill_id: int,
+    payment: schemas.PaymentCreate,
+    db: Session = Depends(get_db),
+    service: BillService = Depends(get_service),
+    username: str = Depends(get_current_username),
+):
     bill = service.add_payment(bill_id, payment)
     data = schemas.BillResponse.model_validate(bill).model_dump()
     data["warnings"] = []
+    record(db, username, "CREATE_PAYMENT", "bill", bill_id,
+           new_value={"amount": float(payment.amount), "payment_method": payment.payment_method})
     return data
 
 
 @router.patch("/{bill_id}/payments/{payment_id}/cancel", response_model=schemas.BillResponse)
-def cancel_bill_payment(bill_id: int, payment_id: int, service: BillService = Depends(get_service)):
+def cancel_bill_payment(
+    bill_id: int,
+    payment_id: int,
+    db: Session = Depends(get_db),
+    service: BillService = Depends(get_service),
+    username: str = Depends(get_current_username),
+):
     bill = service.cancel_payment(bill_id, payment_id)
     data = schemas.BillResponse.model_validate(bill).model_dump()
     data["warnings"] = []
+    record(db, username, "CANCEL_PAYMENT", "payment", payment_id, new_value={"bill_id": bill_id})
     return data
 
 

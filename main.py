@@ -4,11 +4,12 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.database import engine
-from app.models import Base
+from app.database import engine, SessionLocal
+from app.models import Base, User
 from app.routers import inventory, suppliers, categories, units, billing, customers, purchases, dashboard
-from app.routers import auth as auth_router
+from app.routers import auth as auth_router, users, audit_log
 from app.auth import is_valid_session
+from app.security import hash_password
 from sqlalchemy import text, inspect as sa_inspect
 
 Base.metadata.create_all(bind=engine)
@@ -45,6 +46,23 @@ with engine.connect() as conn:
         conn.execute(text("UPDATE bills SET amount_paid = total_amount, payment_state = 'paid'"))
     conn.commit()
 
+# Seed a default admin account if none exists yet, so the app is usable
+# immediately after a fresh deploy. Preserves the previous hardcoded
+# credentials (admin/skgifts) by default for continuity with the old
+# single-password login — set DEFAULT_ADMIN_PASSWORD to seed a different
+# one instead, or change it from Settings > Users once logged in.
+_db = SessionLocal()
+try:
+    if _db.query(User).count() == 0:
+        _db.add(User(
+            username="admin",
+            password_hash=hash_password(os.environ.get("DEFAULT_ADMIN_PASSWORD", "skgifts")),
+            role="ADMIN",
+        ))
+        _db.commit()
+finally:
+    _db.close()
+
 _base = os.environ.get('BASE_DIR', os.path.dirname(os.path.abspath(__file__)))
 
 _PUBLIC_PATHS = ("/login", "/static", "/favicon.ico")
@@ -79,6 +97,8 @@ app.include_router(billing.router)
 app.include_router(customers.router)
 app.include_router(purchases.router)
 app.include_router(dashboard.router)
+app.include_router(users.router)
+app.include_router(audit_log.router)
 
 
 @app.get("/", response_class=HTMLResponse)

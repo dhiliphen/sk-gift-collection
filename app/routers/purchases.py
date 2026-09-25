@@ -5,6 +5,8 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app import schemas
+from app.auth import get_current_username
+from app.audit import record
 from app.repositories.purchase import PurchaseRepository
 from app.repositories.item import ItemRepository
 from app.services.purchase import PurchaseService
@@ -42,13 +44,29 @@ def get_purchase(purchase_id: int, service: PurchaseService = Depends(get_servic
 
 
 @router.post("", response_model=schemas.PurchaseResponse, status_code=201)
-def create_purchase(purchase: schemas.PurchaseCreate, service: PurchaseService = Depends(get_service)):
-    return service.create(purchase)
+def create_purchase(
+    purchase: schemas.PurchaseCreate,
+    db: Session = Depends(get_db),
+    service: PurchaseService = Depends(get_service),
+    username: str = Depends(get_current_username),
+):
+    created = service.create(purchase)
+    record(db, username, "CREATE_PURCHASE", "purchase", created.id,
+           new_value=schemas.PurchaseResponse.model_validate(created).model_dump(mode="json"))
+    return created
 
 
 @router.patch("/{purchase_id}/cancel", response_model=schemas.PurchaseCancelResponse)
-def cancel_purchase(purchase_id: int, service: PurchaseService = Depends(get_service)):
+def cancel_purchase(
+    purchase_id: int,
+    db: Session = Depends(get_db),
+    service: PurchaseService = Depends(get_service),
+    username: str = Depends(get_current_username),
+):
+    old = schemas.PurchaseResponse.model_validate(service.get_by_id(purchase_id)).model_dump(mode="json")
     purchase, warnings = service.cancel(purchase_id)
+    record(db, username, "CANCEL_PURCHASE", "purchase", purchase_id,
+           old_value=old, new_value=schemas.PurchaseResponse.model_validate(purchase).model_dump(mode="json"))
     return {"purchase": purchase, "warnings": warnings}
 
 

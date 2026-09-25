@@ -344,3 +344,44 @@ class DashboardResponse(BaseModel):
     sales: DashboardSales
     purchases: DashboardPurchases
     alerts: List[DashboardAlert]
+
+
+_ROLE_PATTERN = "^(ADMIN|MANAGER|SALES|PURCHASE|INVENTORY|ACCOUNTANT|VIEWER)$"
+
+
+class UserCreate(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+    password: str = Field(..., min_length=6, max_length=200)
+    # Defaults to the least-privileged role — ADMIN must be a deliberate choice.
+    role: str = Field(default="VIEWER", pattern=_ROLE_PATTERN)
+
+
+class UserUpdate(BaseModel):
+    role: Optional[str] = Field(None, pattern=_ROLE_PATTERN)
+    is_active: Optional[bool] = None
+    password: Optional[str] = Field(None, min_length=6, max_length=200)
+
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
+    role: str
+    is_active: bool
+    created_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class AuditLogResponse(BaseModel):
+    id: int
+    username: Optional[str]
+    action: str
+    entity_type: Optional[str]
+    entity_id: Optional[int]
+    old_value: Optional[str]
+    new_value: Optional[str]
+    created_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True

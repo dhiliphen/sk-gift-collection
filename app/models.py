@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Column, Integer, String, Numeric, DateTime, ForeignKey
+from sqlalchemy import Column, Integer, String, Numeric, DateTime, Boolean, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.database import Base
@@ -191,4 +191,34 @@ class StockMovement(Base):
     reference_type = Column(String(20), nullable=True)  # bill | purchase | item_create | item_edit
     reference_id = Column(Integer, nullable=True)
     note = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), unique=True, nullable=False, index=True)
+    password_hash = Column(String(200), nullable=False)
+    # ADMIN | MANAGER | SALES | PURCHASE | INVENTORY | ACCOUNTANT | VIEWER
+    role = Column(String(20), nullable=False, default="ADMIN")
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class AuditLog(Base):
+    """Append-only record of who did what. `username` is a point-in-time
+    snapshot (not a foreign key) so the audit trail survives a user account
+    later being deleted. old_value/new_value are JSON snapshots built from
+    the same response schemas the API already returns — never used for
+    login events, which must never carry a password."""
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), nullable=True)
+    action = Column(String(30), nullable=False)
+    entity_type = Column(String(30), nullable=True)
+    entity_id = Column(Integer, nullable=True)
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

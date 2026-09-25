@@ -30,10 +30,16 @@ from fastapi.testclient import TestClient
 
 from app.database import Base, get_db
 from app import models
+from app.security import hash_password
 from main import app
 
 # Header sent with every test request to bypass AuthMiddleware.
 AUTH_HEADERS = {"X-Internal-Key": "test-internal-key-12345"}
+
+# Matches the app's own default-admin seed (see main.py) so session-cookie
+# login tests have a real user to authenticate against.
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "skgifts"
 
 
 # ---------------------------------------------------------------------------
@@ -60,6 +66,12 @@ def db():
 
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
+    session.add(models.User(
+        username=ADMIN_USERNAME,
+        password_hash=hash_password(ADMIN_PASSWORD),
+        role="ADMIN",
+    ))
+    session.commit()
     try:
         yield session
     finally:
@@ -142,3 +154,20 @@ def sample_customer(db):
     db.commit()
     db.refresh(customer)
     return customer
+
+
+@pytest.fixture
+def sample_viewer_user(db):
+    """A non-admin user, for testing that role-gated endpoints reject them."""
+    user = models.User(username="viewer1", password_hash=hash_password("viewerpass123"), role="VIEWER")
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+def login_as(client, username: str, password: str) -> dict:
+    """Logs in via the real /login form flow and returns cookies usable on
+    subsequent session-authenticated requests."""
+    resp = client.post("/login", data={"username": username, "password": password}, follow_redirects=False)
+    return {"session": resp.cookies.get("session")}
