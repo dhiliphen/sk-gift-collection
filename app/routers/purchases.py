@@ -9,8 +9,10 @@ from app.auth import get_current_username
 from app.audit import record
 from app.repositories.purchase import PurchaseRepository
 from app.repositories.purchase_order import PurchaseOrderRepository
+from app.repositories.purchase_return import PurchaseReturnRepository
 from app.repositories.item import ItemRepository
 from app.services.purchase import PurchaseService
+from app.services.purchase_return import PurchaseReturnService
 from app.utils import amount_in_words
 
 _base = os.environ.get('BASE_DIR', os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -32,6 +34,10 @@ router = APIRouter(prefix="/api/purchases", tags=["purchases"])
 
 def get_service(db: Session = Depends(get_db)) -> PurchaseService:
     return PurchaseService(PurchaseRepository(db), ItemRepository(db), PurchaseOrderRepository(db))
+
+
+def get_return_service(db: Session = Depends(get_db)) -> PurchaseReturnService:
+    return PurchaseReturnService(PurchaseReturnRepository(db), PurchaseRepository(db), ItemRepository(db))
 
 
 @router.get("", response_model=list[schemas.PurchaseResponse])
@@ -69,6 +75,42 @@ def cancel_purchase(
     record(db, username, "CANCEL_PURCHASE", "purchase", purchase_id,
            old_value=old, new_value=schemas.PurchaseResponse.model_validate(purchase).model_dump(mode="json"))
     return {"purchase": purchase, "warnings": warnings}
+
+
+@router.get("/{purchase_id}/returns", response_model=list[schemas.PurchaseReturnResponse])
+def get_purchase_returns(purchase_id: int, service: PurchaseReturnService = Depends(get_return_service)):
+    return service.get_by_purchase(purchase_id)
+
+
+@router.post("/{purchase_id}/returns", response_model=schemas.PurchaseReturnResponse, status_code=201)
+def create_purchase_return(
+    purchase_id: int,
+    data: schemas.PurchaseReturnCreate,
+    db: Session = Depends(get_db),
+    service: PurchaseReturnService = Depends(get_return_service),
+    username: str = Depends(get_current_username),
+):
+    ret, warnings = service.create(purchase_id, data)
+    response = schemas.PurchaseReturnResponse.model_validate(ret).model_dump(mode="json")
+    response["warnings"] = warnings
+    record(db, username, "CREATE_PURCHASE_RETURN", "purchase_return", ret.id, new_value=response)
+    return response
+
+
+@router.patch("/{purchase_id}/returns/{return_id}/cancel", response_model=schemas.PurchaseReturnResponse)
+def cancel_purchase_return(
+    purchase_id: int,
+    return_id: int,
+    db: Session = Depends(get_db),
+    service: PurchaseReturnService = Depends(get_return_service),
+    username: str = Depends(get_current_username),
+):
+    old = schemas.PurchaseReturnResponse.model_validate(service.get_by_id(return_id)).model_dump(mode="json")
+    ret = service.cancel(return_id)
+    response = schemas.PurchaseReturnResponse.model_validate(ret).model_dump(mode="json")
+    response["warnings"] = []
+    record(db, username, "CANCEL_PURCHASE_RETURN", "purchase_return", return_id, old_value=old, new_value=response)
+    return response
 
 
 @router.get("/{purchase_id}/print", response_class=HTMLResponse)

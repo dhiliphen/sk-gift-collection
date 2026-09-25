@@ -297,6 +297,45 @@ def test_confirm_and_cancel_purchase_order_are_audited(client, sample_item):
     assert "CANCEL_PURCHASE_ORDER" in actions
 
 
+def test_create_and_cancel_sales_return_are_audited(client, sample_item):
+    bill = client.post(
+        "/api/bills",
+        json={"customer_name": "Return Audit", "customer_type": "retailer",
+              "items": [{"item_id": sample_item.id, "quantity": 5, "unit_price": 10.0}]},
+        headers=AUTH_HEADERS,
+    ).json()
+    ret = client.post(
+        f"/api/bills/{bill['id']}/returns",
+        json={"items": [{"bill_item_id": bill["items"][0]["id"], "quantity": 2}]},
+        headers=AUTH_HEADERS,
+    ).json()
+    client.patch(f"/api/bills/{bill['id']}/returns/{ret['id']}/cancel", headers=AUTH_HEADERS)
+
+    entries = client.get("/api/audit-log", headers=AUTH_HEADERS).json()
+    actions = [e["action"] for e in entries if e["entity_id"] == ret["id"] and e["entity_type"] == "sales_return"]
+    assert "CREATE_SALES_RETURN" in actions
+    assert "CANCEL_SALES_RETURN" in actions
+
+
+def test_create_and_cancel_purchase_return_are_audited(client, sample_item):
+    purchase = client.post(
+        "/api/purchases",
+        json={"supplier_name": "Return Audit Supplier", "items": [{"item_id": sample_item.id, "quantity": 5, "unit_cost": 10.0}]},
+        headers=AUTH_HEADERS,
+    ).json()
+    ret = client.post(
+        f"/api/purchases/{purchase['id']}/returns",
+        json={"items": [{"purchase_item_id": purchase["items"][0]["id"], "quantity": 2}]},
+        headers=AUTH_HEADERS,
+    ).json()
+    client.patch(f"/api/purchases/{purchase['id']}/returns/{ret['id']}/cancel", headers=AUTH_HEADERS)
+
+    entries = client.get("/api/audit-log", headers=AUTH_HEADERS).json()
+    actions = [e["action"] for e in entries if e["entity_id"] == ret["id"] and e["entity_type"] == "purchase_return"]
+    assert "CREATE_PURCHASE_RETURN" in actions
+    assert "CANCEL_PURCHASE_RETURN" in actions
+
+
 def test_audit_log_can_filter_by_action(client):
     client.post("/api/items", json={"name": "Filter Test Item"}, headers=AUTH_HEADERS)
     resp = client.get("/api/audit-log?action=CREATE_ITEM", headers=AUTH_HEADERS)

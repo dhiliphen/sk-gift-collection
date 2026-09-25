@@ -27,6 +27,7 @@ class PurchaseItemResponse(BaseModel):
     item_name: str
     unit: Optional[str]
     quantity: int
+    quantity_returned: int
     unit_cost: Money
     line_total: Money
 
@@ -153,6 +154,7 @@ class BillItemResponse(BaseModel):
     hsn_code: Optional[str]
     unit: Optional[str]
     quantity: int
+    quantity_returned: int
     unit_price: Money
     gst_rate: Money
     taxable_amount: Money
@@ -430,6 +432,89 @@ class AuditLogResponse(BaseModel):
     old_value: Optional[str]
     new_value: Optional[str]
     created_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
+
+
+class SalesReturnItemCreate(BaseModel):
+    bill_item_id: int
+    quantity: int = Field(..., gt=0)
+
+
+class SalesReturnCreate(BaseModel):
+    reason: Optional[str] = None
+    items: List[SalesReturnItemCreate]
+
+
+class SalesReturnItemResponse(BaseModel):
+    id: int
+    bill_item_id: int
+    item_id: Optional[int]
+    item_name: str
+    quantity: int
+    unit_price: Money
+    gst_rate: Money
+    taxable_amount: Money
+    igst_amount: Money
+    line_total: Money
+
+    class Config:
+        from_attributes = True
+
+
+class SalesReturnResponse(BaseModel):
+    id: int
+    credit_note_number: str
+    bill_id: int
+    customer_name: str
+    reason: Optional[str]
+    taxable_amount: Money
+    igst_amount: Money
+    total_amount: Money
+    status: str
+    created_at: Optional[datetime]
+    items: List[SalesReturnItemResponse] = []
+    warnings: List[str] = []
+
+    class Config:
+        from_attributes = True
+
+
+class PurchaseReturnItemCreate(BaseModel):
+    purchase_item_id: int
+    quantity: int = Field(..., gt=0)
+
+
+class PurchaseReturnCreate(BaseModel):
+    reason: Optional[str] = None
+    items: List[PurchaseReturnItemCreate]
+
+
+class PurchaseReturnItemResponse(BaseModel):
+    id: int
+    purchase_item_id: int
+    item_id: Optional[int]
+    item_name: str
+    quantity: int
+    unit_cost: Money
+    line_total: Money
+
+    class Config:
+        from_attributes = True
+
+
+class PurchaseReturnResponse(BaseModel):
+    id: int
+    debit_note_number: str
+    purchase_id: int
+    supplier_name: str
+    reason: Optional[str]
+    total_amount: Money
+    status: str
+    created_at: Optional[datetime]
+    items: List[PurchaseReturnItemResponse] = []
+    warnings: List[str] = []
 
     class Config:
         from_attributes = True

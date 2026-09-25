@@ -81,6 +81,9 @@ class PurchaseBillItem(Base):
     quantity = Column(Integer, nullable=False)
     unit_cost = Column(MONEY, nullable=False)
     line_total = Column(MONEY, nullable=False)
+    # Running total returned to the supplier across all purchase returns
+    # against this line.
+    quantity_returned = Column(Integer, default=0, nullable=False)
 
     bill = relationship("PurchaseBill", back_populates="items")
 
@@ -152,6 +155,9 @@ class BillItem(Base):
     taxable_amount = Column(MONEY, nullable=False)
     igst_amount = Column(MONEY, default=0)
     line_total = Column(MONEY, nullable=False)
+    # Running total returned by the customer across all sales returns
+    # against this line.
+    quantity_returned = Column(Integer, default=0, nullable=False)
 
     bill = relationship("Bill", back_populates="items")
 
@@ -230,7 +236,8 @@ class StockMovement(Base):
     id = Column(Integer, primary_key=True, index=True)
     item_id = Column(Integer, ForeignKey("inventory.id"), nullable=False, index=True)
     movement_type = Column(String(20), nullable=False)
-    # OPENING_STOCK | PURCHASE | PURCHASE_CANCEL | SALE | SALE_CANCEL | ADJUSTMENT
+    # OPENING_STOCK | PURCHASE | PURCHASE_CANCEL | PURCHASE_RETURN |
+    # SALE | SALE_CANCEL | SALES_RETURN | ADJUSTMENT
     quantity_change = Column(Integer, nullable=False)   # signed: + increases stock, - decreases
     quantity_before = Column(Integer, nullable=False)
     quantity_after = Column(Integer, nullable=False)
@@ -268,3 +275,85 @@ class AuditLog(Base):
     old_value = Column(Text, nullable=True)
     new_value = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class SalesReturn(Base):
+    """A customer return against an existing invoice, doubling as the
+    credit note issued for it. The original Bill is never modified (its
+    total, payment fields, and printed record all stay exactly as they
+    were) — this app does not invent how the credited amount gets settled
+    (cash refund, adjustment against a future bill, etc.); it only records
+    the fact and traceable value of the return. Stock increases for
+    whatever's still in the catalog; status mirrors the cancel-not-delete
+    pattern used everywhere else (issued | cancelled)."""
+    __tablename__ = "sales_returns"
+
+    id = Column(Integer, primary_key=True, index=True)
+    credit_note_number = Column(String(20), unique=True, nullable=False, index=True)
+    bill_id = Column(Integer, ForeignKey("bills.id"), nullable=False, index=True)
+    customer_name = Column(String(100), nullable=False)
+    reason = Column(String(255), nullable=True)
+    taxable_amount = Column(MONEY, default=0)
+    igst_amount = Column(MONEY, default=0)
+    total_amount = Column(MONEY, default=0)
+    status = Column(String(20), default="issued")  # issued | cancelled
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    bill = relationship("Bill")
+    items = relationship("SalesReturnItem", back_populates="return_", cascade="all, delete-orphan")
+
+
+class SalesReturnItem(Base):
+    __tablename__ = "sales_return_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    return_id = Column(Integer, ForeignKey("sales_returns.id"), nullable=False)
+    bill_item_id = Column(Integer, ForeignKey("bill_items.id"), nullable=False)
+    item_id = Column(Integer, nullable=True)
+    item_name = Column(String(100), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    unit_price = Column(MONEY, nullable=False)     # snapshot from the original bill line
+    gst_rate = Column(MONEY, default=0)
+    taxable_amount = Column(MONEY, nullable=False)
+    igst_amount = Column(MONEY, default=0)
+    line_total = Column(MONEY, nullable=False)
+
+    return_ = relationship("SalesReturn", back_populates="items")
+
+
+class PurchaseReturn(Base):
+    """Goods sent back to a supplier against an existing goods receipt —
+    this business's debit note to that supplier (it reduces what's owed
+    to them; a "credit note" is the document the supplier would issue in
+    response, which this app doesn't fabricate on their behalf). The
+    original PurchaseBill is never modified. Stock decreases, so this is
+    only possible while that stock is still on hand — mirrors the existing
+    guard on cancelling a purchase after its stock has been sold."""
+    __tablename__ = "purchase_returns"
+
+    id = Column(Integer, primary_key=True, index=True)
+    debit_note_number = Column(String(20), unique=True, nullable=False, index=True)
+    purchase_id = Column(Integer, ForeignKey("purchase_bills.id"), nullable=False, index=True)
+    supplier_name = Column(String(100), nullable=False)
+    reason = Column(String(255), nullable=True)
+    total_amount = Column(MONEY, default=0)
+    status = Column(String(20), default="issued")  # issued | cancelled
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    purchase = relationship("PurchaseBill")
+    items = relationship("PurchaseReturnItem", back_populates="return_", cascade="all, delete-orphan")
+
+
+class PurchaseReturnItem(Base):
+    __tablename__ = "purchase_return_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    return_id = Column(Integer, ForeignKey("purchase_returns.id"), nullable=False)
+    purchase_item_id = Column(Integer, ForeignKey("purchase_bill_items.id"), nullable=False)
+    item_id = Column(Integer, nullable=True)
+    item_name = Column(String(100), nullable=False)
+    quantity = Column(Integer, nullable=False)
+    unit_cost = Column(MONEY, nullable=False)      # snapshot from the original purchase line
+    line_total = Column(MONEY, nullable=False)
+
+    return_ = relationship("PurchaseReturn", back_populates="items")

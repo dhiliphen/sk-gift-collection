@@ -11,7 +11,9 @@ from app.audit import record
 from app.repositories.bill import BillRepository
 from app.repositories.item import ItemRepository
 from app.repositories.payment import PaymentRepository
+from app.repositories.sales_return import SalesReturnRepository
 from app.services.bill import BillService
+from app.services.sales_return import SalesReturnService
 from app.services.tax import split_cgst_sgst
 from app.utils import amount_in_words
 
@@ -34,6 +36,10 @@ router = APIRouter(prefix="/api/bills", tags=["billing"])
 
 def get_service(db: Session = Depends(get_db)) -> BillService:
     return BillService(BillRepository(db), ItemRepository(db), PaymentRepository(db))
+
+
+def get_return_service(db: Session = Depends(get_db)) -> SalesReturnService:
+    return SalesReturnService(SalesReturnRepository(db), BillRepository(db), ItemRepository(db))
 
 
 @router.get("", response_model=list[schemas.BillResponse])
@@ -108,6 +114,42 @@ def cancel_bill_payment(
     data["warnings"] = []
     record(db, username, "CANCEL_PAYMENT", "payment", payment_id, new_value={"bill_id": bill_id})
     return data
+
+
+@router.get("/{bill_id}/returns", response_model=list[schemas.SalesReturnResponse])
+def get_bill_returns(bill_id: int, service: SalesReturnService = Depends(get_return_service)):
+    return service.get_by_bill(bill_id)
+
+
+@router.post("/{bill_id}/returns", response_model=schemas.SalesReturnResponse, status_code=201)
+def create_bill_return(
+    bill_id: int,
+    data: schemas.SalesReturnCreate,
+    db: Session = Depends(get_db),
+    service: SalesReturnService = Depends(get_return_service),
+    username: str = Depends(get_current_username),
+):
+    ret, warnings = service.create(bill_id, data)
+    response = schemas.SalesReturnResponse.model_validate(ret).model_dump(mode="json")
+    response["warnings"] = warnings
+    record(db, username, "CREATE_SALES_RETURN", "sales_return", ret.id, new_value=response)
+    return response
+
+
+@router.patch("/{bill_id}/returns/{return_id}/cancel", response_model=schemas.SalesReturnResponse)
+def cancel_bill_return(
+    bill_id: int,
+    return_id: int,
+    db: Session = Depends(get_db),
+    service: SalesReturnService = Depends(get_return_service),
+    username: str = Depends(get_current_username),
+):
+    old = schemas.SalesReturnResponse.model_validate(service.get_by_id(return_id)).model_dump(mode="json")
+    ret = service.cancel(return_id)
+    response = schemas.SalesReturnResponse.model_validate(ret).model_dump(mode="json")
+    response["warnings"] = []
+    record(db, username, "CANCEL_SALES_RETURN", "sales_return", return_id, old_value=old, new_value=response)
+    return response
 
 
 @router.get("/{bill_id}/print", response_class=HTMLResponse)

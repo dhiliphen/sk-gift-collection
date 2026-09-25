@@ -995,6 +995,20 @@
     margin-right: 0.25rem;
   }
 
+  .return-line-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .return-line-row:last-child { border-bottom: none; }
+  .return-line-info { font-size: 0.85rem; }
+  .return-line-sub { color: var(--text-muted); font-size: 0.75rem; margin-top: 0.15rem; }
+  .return-line-row input[type="number"] { width: 90px; }
+  .status-badge.issued { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
+
   .audit-detail {
     font-family: var(--mono);
     font-size: 0.65rem;
@@ -1876,7 +1890,30 @@
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('view-purchase-modal')">Close</button>
       <button class="btn btn-stock" onclick="printPurchase()">PRINT</button>
+      <button class="btn btn-stock" id="return-to-supplier-btn" onclick="openRecordPurchaseReturn(currentPurchaseId)">RETURN TO SUPPLIER</button>
       <button class="btn btn-warn" id="cancel-pur-btn" onclick="cancelCurrentPurchase()">CANCEL PURCHASE</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECORD PURCHASE RETURN MODAL -->
+<div class="modal-overlay" id="record-purchase-return-modal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">Return to Supplier — <span id="pur-return-number"></span></div>
+      <button class="modal-close" onclick="closeModal('record-purchase-return-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pur-return-purchase-id">
+      <div id="pur-return-lines"></div>
+      <div class="form-group" style="margin-top:1rem;">
+        <label>Reason</label>
+        <input type="text" id="pur-return-reason" placeholder="e.g. Wrong item, damaged in transit (optional)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('record-purchase-return-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitPurchaseReturn()">ISSUE DEBIT NOTE</button>
     </div>
   </div>
 </div>
@@ -2170,7 +2207,30 @@
       <button class="btn btn-ghost" onclick="closeModal('view-bill-modal')">Close</button>
       <button class="btn btn-stock" onclick="printBill()">PRINT</button>
       <button class="btn btn-primary" id="record-payment-from-view-btn" onclick="openRecordPayment(viewingBillId)">RECORD PAYMENT</button>
+      <button class="btn btn-stock" id="return-items-btn" onclick="openRecordSalesReturn(viewingBillId)">RETURN ITEMS</button>
       <button class="btn btn-warn" id="cancel-bill-btn" onclick="cancelCurrentBill()">CANCEL BILL</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECORD SALES RETURN MODAL -->
+<div class="modal-overlay" id="record-return-modal">
+  <div class="modal" style="width:560px;">
+    <div class="modal-header">
+      <div class="modal-title">Return Items — <span id="return-invoice-number"></span></div>
+      <button class="modal-close" onclick="closeModal('record-return-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="return-bill-id">
+      <div id="return-lines"></div>
+      <div class="form-group" style="margin-top:1rem;">
+        <label>Reason</label>
+        <input type="text" id="return-reason" placeholder="e.g. Damaged, wrong item (optional)">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('record-return-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitSalesReturn()">ISSUE CREDIT NOTE</button>
     </div>
   </div>
 </div>
@@ -3449,11 +3509,15 @@
       const res = await fetch(`/api/bills/${id}`);
       const bill = await res.json();
       const payments = await (await fetch(`/api/bills/${id}/payments`)).json();
+      const returns = await (await fetch(`/api/bills/${id}/returns`)).json();
       viewingBillId = bill.id;
       document.getElementById('view-bill-title').textContent = bill.invoice_number;
       document.getElementById('cancel-bill-btn').style.display = bill.status === 'paid' ? '' : 'none';
       document.getElementById('record-payment-from-view-btn').style.display =
         (bill.status === 'paid' && bill.balance_due > 0) ? '' : 'none';
+      const hasReturnable = bill.items.some(i => i.quantity_returned < i.quantity);
+      document.getElementById('return-items-btn').style.display =
+        (bill.status === 'paid' && hasReturnable) ? '' : 'none';
 
       const rows = bill.items.map(i => `
         <tr>
@@ -3516,6 +3580,22 @@
           <table class="bill-detail-table">
             <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Amount</th><th></th></tr></thead>
             <tbody>${paymentRows}</tbody>
+          </table>` : ''}
+        ${returns.length ? `
+          <hr class="divider">
+          <div class="sidebar-title" style="margin-bottom:0.5rem;">Returns / Credit Notes</div>
+          <table class="bill-detail-table">
+            <thead><tr><th>Credit Note</th><th>Date</th><th>Reason</th><th>Amount</th><th></th></tr></thead>
+            <tbody>${returns.map(r => `
+              <tr style="${r.status === 'cancelled' ? 'opacity:0.5; text-decoration:line-through;' : ''}">
+                <td style="font-family:var(--mono); font-size:0.8rem; color:var(--accent);">${r.credit_note_number}</td>
+                <td style="font-size:0.75rem; color:var(--text-muted);">${new Date(r.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})}</td>
+                <td style="font-size:0.75rem; color:var(--text-muted);">${r.reason || '—'}</td>
+                <td style="font-family:var(--mono); color:var(--accent);">₹${r.total_amount.toFixed(2)}</td>
+                <td>${r.status === 'issued'
+                  ? `<button class="btn btn-ghost" style="padding:0.15rem 0.5rem; font-size:0.65rem;" onclick="voidSalesReturn(${bill.id}, ${r.id})">VOID</button>`
+                  : '<span style="font-size:0.7rem; color:var(--text-muted);">voided</span>'}</td>
+              </tr>`).join('')}</tbody>
           </table>` : ''}`;
 
       document.getElementById('view-bill-modal').classList.add('active');
@@ -3555,6 +3635,79 @@
       } else {
         showToast('Bill cancelled, stock restored');
       }
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  // ── Sales Returns / Credit Notes ─────────────────────────
+  async function openRecordSalesReturn(billId) {
+    try {
+      const res = await fetch(`/api/bills/${billId}`);
+      if (!res.ok) { showToast('Failed to load bill', 'error'); return; }
+      const bill = await res.json();
+
+      document.getElementById('return-bill-id').value = bill.id;
+      document.getElementById('return-invoice-number').textContent = bill.invoice_number;
+      document.getElementById('return-reason').value = '';
+
+      const returnable = bill.items.filter(i => i.quantity_returned < i.quantity);
+      if (!returnable.length) { showToast('Nothing left to return on this invoice', 'error'); return; }
+
+      document.getElementById('return-lines').innerHTML = returnable.map(i => {
+        const remaining = i.quantity - i.quantity_returned;
+        return `
+        <div class="return-line-row" data-bill-item-id="${i.id}" data-max="${remaining}">
+          <div class="return-line-info">
+            <div>${i.item_name}</div>
+            <div class="return-line-sub">Sold ${i.quantity} · Already returned ${i.quantity_returned} · Max ${remaining}</div>
+          </div>
+          <input type="number" min="0" max="${remaining}" value="0">
+        </div>`;
+      }).join('');
+
+      document.getElementById('record-return-modal').classList.add('active');
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function submitSalesReturn() {
+    const billId = document.getElementById('return-bill-id').value;
+    const items = [];
+    let invalid = false;
+    document.querySelectorAll('#return-lines .return-line-row').forEach(row => {
+      const qty = parseInt(row.querySelector('input').value) || 0;
+      const max = parseInt(row.dataset.max);
+      if (qty < 0 || qty > max) invalid = true;
+      if (qty > 0) items.push({ bill_item_id: parseInt(row.dataset.billItemId), quantity: qty });
+    });
+    if (invalid) { showToast('Return quantity exceeds what is still returnable', 'error'); return; }
+    if (!items.length) { showToast('Enter a quantity for at least one item', 'error'); return; }
+
+    try {
+      const res = await fetch(`/api/bills/${billId}/returns`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: document.getElementById('return-reason').value.trim() || null, items })
+      });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error recording return', 'error'); return; }
+      const data = await res.json();
+      closeModal('record-return-modal');
+      await loadInventory();
+      await viewBill(parseInt(billId));
+      if (data.warnings && data.warnings.length) {
+        alert('⚠️ Credit Note Issued — Please Review\n\n' + data.warnings.map(w => '• ' + w).join('\n'));
+      } else {
+        showToast(`Credit note ${data.credit_note_number} issued — stock updated`);
+      }
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function voidSalesReturn(billId, returnId) {
+    if (!confirm('Void this return? Stock will be reduced back out.')) return;
+    try {
+      const res = await fetch(`/api/bills/${billId}/returns/${returnId}/cancel`, { method: 'PATCH' });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      await loadInventory();
+      await viewBill(billId);
+      showToast('Return voided');
     } catch (e) { showToast('Server error', 'error'); }
   }
 
@@ -3964,12 +4117,20 @@
     } catch (e) { showToast('Server error', 'error'); }
   }
 
-  function viewPurchase(id) {
+  async function viewPurchase(id) {
     const p = allPurchases.find(x => x.id === id);
     if (!p) return;
     currentPurchaseId = id;
     document.getElementById('view-pur-title').textContent = p.purchase_number;
     document.getElementById('cancel-pur-btn').style.display = p.status === 'received' ? '' : 'none';
+
+    const hasReturnable = p.items.some(i => i.quantity_returned < i.quantity);
+    document.getElementById('return-to-supplier-btn').style.display =
+      (p.status === 'received' && hasReturnable) ? '' : 'none';
+
+    let returns = [];
+    try { returns = await (await fetch(`/api/purchases/${id}/returns`)).json(); } catch (e) {}
+
     document.getElementById('view-pur-body').innerHTML = `
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1rem;">
         <div><span style="font-family:var(--mono); font-size:0.65rem; color:var(--text-muted); letter-spacing:1px; text-transform:uppercase;">Supplier</span><div style="font-weight:600; margin-top:0.25rem;">${p.supplier_name}</div></div>
@@ -3983,7 +4144,23 @@
           ${p.items.map(i => `<tr><td>${i.item_name}</td><td style="font-family:var(--mono);">${i.quantity}</td><td class="price-cell">₹${i.unit_cost.toFixed(2)}</td><td class="price-cell">₹${i.line_total.toFixed(2)}</td></tr>`).join('')}
         </tbody>
         <tfoot><tr><td colspan="3" style="text-align:right; font-family:var(--mono); font-size:0.7rem; color:var(--text-muted); padding:0.6rem 0.75rem;">TOTAL</td><td class="price-cell" style="font-weight:700; color:var(--accent);">₹${p.total_amount.toFixed(2)}</td></tr></tfoot>
-      </table>`;
+      </table>
+      ${returns.length ? `
+        <hr class="divider">
+        <div class="sidebar-title" style="margin-bottom:0.5rem;">Returns / Debit Notes</div>
+        <table class="bill-detail-table">
+          <thead><tr><th>Debit Note</th><th>Date</th><th>Reason</th><th>Amount</th><th></th></tr></thead>
+          <tbody>${returns.map(r => `
+            <tr style="${r.status === 'cancelled' ? 'opacity:0.5; text-decoration:line-through;' : ''}">
+              <td style="font-family:var(--mono); font-size:0.8rem; color:var(--accent);">${r.debit_note_number}</td>
+              <td style="font-size:0.75rem; color:var(--text-muted);">${new Date(r.created_at).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})}</td>
+              <td style="font-size:0.75rem; color:var(--text-muted);">${r.reason || '—'}</td>
+              <td style="font-family:var(--mono); color:var(--accent);">₹${r.total_amount.toFixed(2)}</td>
+              <td>${r.status === 'issued'
+                ? `<button class="btn btn-ghost" style="padding:0.15rem 0.5rem; font-size:0.65rem;" onclick="voidPurchaseReturn(${p.id}, ${r.id})">VOID</button>`
+                : '<span style="font-size:0.7rem; color:var(--text-muted);">voided</span>'}</td>
+            </tr>`).join('')}</tbody>
+        </table>` : ''}`;
     document.getElementById('view-purchase-modal').classList.add('active');
   }
 
@@ -4008,6 +4185,78 @@
       } else {
         showToast('Purchase cancelled — stock reversed');
       }
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  // ── Purchase Returns / Debit Notes ───────────────────────
+  async function openRecordPurchaseReturn(purchaseId) {
+    const p = allPurchases.find(x => x.id === purchaseId);
+    if (!p) return;
+
+    document.getElementById('pur-return-purchase-id').value = p.id;
+    document.getElementById('pur-return-number').textContent = p.purchase_number;
+    document.getElementById('pur-return-reason').value = '';
+
+    const returnable = p.items.filter(i => i.quantity_returned < i.quantity);
+    if (!returnable.length) { showToast('Nothing left to return on this purchase', 'error'); return; }
+
+    document.getElementById('pur-return-lines').innerHTML = returnable.map(i => {
+      const remaining = i.quantity - i.quantity_returned;
+      return `
+      <div class="return-line-row" data-purchase-item-id="${i.id}" data-max="${remaining}">
+        <div class="return-line-info">
+          <div>${i.item_name}</div>
+          <div class="return-line-sub">Received ${i.quantity} · Already returned ${i.quantity_returned} · Max ${remaining}</div>
+        </div>
+        <input type="number" min="0" max="${remaining}" value="0">
+      </div>`;
+    }).join('');
+
+    document.getElementById('record-purchase-return-modal').classList.add('active');
+  }
+
+  async function submitPurchaseReturn() {
+    const purchaseId = document.getElementById('pur-return-purchase-id').value;
+    const items = [];
+    let invalid = false;
+    document.querySelectorAll('#pur-return-lines .return-line-row').forEach(row => {
+      const qty = parseInt(row.querySelector('input').value) || 0;
+      const max = parseInt(row.dataset.max);
+      if (qty < 0 || qty > max) invalid = true;
+      if (qty > 0) items.push({ purchase_item_id: parseInt(row.dataset.purchaseItemId), quantity: qty });
+    });
+    if (invalid) { showToast('Return quantity exceeds what is still returnable', 'error'); return; }
+    if (!items.length) { showToast('Enter a quantity for at least one item', 'error'); return; }
+
+    try {
+      const res = await fetch(`/api/purchases/${purchaseId}/returns`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: document.getElementById('pur-return-reason').value.trim() || null, items })
+      });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error recording return', 'error'); return; }
+      const data = await res.json();
+      closeModal('record-purchase-return-modal');
+      await loadPurchases();
+      await loadInventory();
+      await viewPurchase(parseInt(purchaseId));
+      if (data.warnings && data.warnings.length) {
+        alert('⚠️ Debit Note Issued — Please Review\n\n' + data.warnings.map(w => '• ' + w).join('\n'));
+      } else {
+        showToast(`Debit note ${data.debit_note_number} issued — stock updated`);
+      }
+    } catch (e) { showToast('Server error', 'error'); }
+  }
+
+  async function voidPurchaseReturn(purchaseId, returnId) {
+    if (!confirm('Void this return? Stock will be added back.')) return;
+    try {
+      const res = await fetch(`/api/purchases/${purchaseId}/returns/${returnId}/cancel`, { method: 'PATCH' });
+      if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
+      await loadPurchases();
+      await loadInventory();
+      await viewPurchase(purchaseId);
+      showToast('Return voided');
     } catch (e) { showToast('Server error', 'error'); }
   }
 

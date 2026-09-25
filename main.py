@@ -35,6 +35,8 @@ with engine.connect() as conn:
     _add_col(conn, 'purchase_bills', 'purchase_order_id', 'INTEGER')
     _add_col(conn, 'bill_items',  'taxable_amount',   'REAL DEFAULT 0.0')
     _add_col(conn, 'bill_items',  'igst_amount',      'REAL DEFAULT 0.0')
+    _add_col(conn, 'bill_items',  'quantity_returned', 'INTEGER DEFAULT 0')
+    _add_col(conn, 'purchase_bill_items', 'quantity_returned', 'INTEGER DEFAULT 0')
 
     # Payment tracking: bills created before this migration were always paid
     # in full at creation time (the app's original cash-sale assumption), so
