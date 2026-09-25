@@ -2,12 +2,45 @@ from fastapi import HTTPException
 from app import models, schemas
 from app.repositories.bill import BillRepository
 from app.repositories.item import ItemRepository
+from app.repositories.payment import PaymentRepository
 
 
 class BillService:
-    def __init__(self, bill_repo: BillRepository, item_repo: ItemRepository):
+    def __init__(self, bill_repo: BillRepository, item_repo: ItemRepository, payment_repo: PaymentRepository):
         self.bill_repo = bill_repo
         self.item_repo = item_repo
+        self.payment_repo = payment_repo
+
+    @staticmethod
+    def _derive_payment_state(bill: models.Bill) -> str:
+        if bill.amount_paid <= 0:
+            return "unpaid"
+        if round(bill.amount_paid, 2) < round(bill.total_amount, 2):
+            return "partially_paid"
+        return "paid"
+
+    def _record_payment(
+        self,
+        bill: models.Bill,
+        amount: float,
+        method: str,
+        reference: str | None = None,
+        notes: str | None = None,
+        payment_date=None,
+    ) -> models.Payment:
+        payment = models.Payment(
+            bill_id=bill.id,
+            amount=round(amount, 2),
+            payment_method=method,
+            reference_number=reference,
+            notes=notes,
+        )
+        if payment_date is not None:
+            payment.payment_date = payment_date
+        self.payment_repo.save(payment)
+        bill.amount_paid = round(bill.amount_paid + amount, 2)
+        bill.payment_state = self._derive_payment_state(bill)
+        return payment
 
     def get_all(self) -> list[models.Bill]:
         return self.bill_repo.get_all_ordered()
@@ -101,6 +134,23 @@ class BillService:
         db_bill.igst_amount = round(igst_total, 2)
         db_bill.total_amount = round(taxable_total + igst_total, 2)
 
+        # Payment collected at sale. Defaults to full total (preserves the
+        # app's original cash-sale behavior) unless a smaller amount is given.
+        requested_paid = data.amount_paid if data.amount_paid is not None else db_bill.total_amount
+        if round(requested_paid, 2) > round(db_bill.total_amount, 2):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Amount paid (₹{requested_paid:.2f}) cannot exceed invoice total (₹{db_bill.total_amount:.2f})",
+            )
+        db_bill.due_date = data.due_date
+        db_bill.amount_paid = 0.0
+        db_bill.payment_state = "unpaid"
+        if requested_paid > 0:
+            self._record_payment(
+                db_bill, requested_paid, data.payment_method, data.payment_reference,
+                notes="Recorded at sale",
+            )
+
         self.bill_repo.commit()
         bill = self.bill_repo.refresh(db_bill)
 
@@ -147,6 +197,50 @@ class BillService:
                     f"Please adjust your stock records manually."
                 )
 
+        if bill.amount_paid > 0:
+            warnings.append(
+                f"This invoice had ₹{bill.amount_paid:.2f} recorded as paid. "
+                f"Cancelling does not automatically refund or reverse this payment — "
+                f"please process a refund manually if applicable."
+            )
+
         bill.status = "cancelled"
         self.bill_repo.commit()
         return self.bill_repo.refresh(bill), warnings
+
+    def get_payments(self, bill_id: int) -> list[models.Payment]:
+        self.get_by_id(bill_id)  # 404 if missing
+        return self.payment_repo.get_by_bill(bill_id)
+
+    def add_payment(self, bill_id: int, data: schemas.PaymentCreate) -> models.Bill:
+        bill = self.get_by_id(bill_id)
+        if bill.status == "cancelled":
+            raise HTTPException(status_code=400, detail="Cannot record a payment against a cancelled invoice")
+        if round(bill.amount_paid + data.amount, 2) > round(bill.total_amount, 2):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Payment of ₹{data.amount:.2f} would exceed the outstanding balance "
+                    f"of ₹{bill.balance_due:.2f} for {bill.invoice_number}"
+                ),
+            )
+        self._record_payment(
+            bill, data.amount, data.payment_method, data.reference_number,
+            notes=data.notes, payment_date=data.payment_date,
+        )
+        self.bill_repo.commit()
+        return self.bill_repo.refresh(bill)
+
+    def cancel_payment(self, bill_id: int, payment_id: int) -> models.Bill:
+        bill = self.get_by_id(bill_id)
+        payment = self.payment_repo.get_by_id(payment_id)
+        if not payment or payment.bill_id != bill_id:
+            raise HTTPException(status_code=404, detail="Payment not found for this invoice")
+        if payment.status == "cancelled":
+            raise HTTPException(status_code=400, detail="Payment is already cancelled")
+
+        payment.status = "cancelled"
+        bill.amount_paid = round(bill.amount_paid - payment.amount, 2)
+        bill.payment_state = self._derive_payment_state(bill)
+        self.bill_repo.commit()
+        return self.bill_repo.refresh(bill)

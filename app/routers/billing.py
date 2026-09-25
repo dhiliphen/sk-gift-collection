@@ -7,6 +7,7 @@ from app.database import get_db
 from app import schemas
 from app.repositories.bill import BillRepository
 from app.repositories.item import ItemRepository
+from app.repositories.payment import PaymentRepository
 from app.services.bill import BillService
 from app.utils import amount_in_words
 
@@ -28,7 +29,7 @@ router = APIRouter(prefix="/api/bills", tags=["billing"])
 
 
 def get_service(db: Session = Depends(get_db)) -> BillService:
-    return BillService(BillRepository(db), ItemRepository(db))
+    return BillService(BillRepository(db), ItemRepository(db), PaymentRepository(db))
 
 
 @router.get("", response_model=list[schemas.BillResponse])
@@ -53,6 +54,27 @@ def create_bill(bill: schemas.BillCreate, service: BillService = Depends(get_ser
 def cancel_bill(bill_id: int, service: BillService = Depends(get_service)):
     bill, warnings = service.cancel(bill_id)
     return {"bill": bill, "warnings": warnings}
+
+
+@router.get("/{bill_id}/payments", response_model=list[schemas.PaymentResponse])
+def get_bill_payments(bill_id: int, service: BillService = Depends(get_service)):
+    return service.get_payments(bill_id)
+
+
+@router.post("/{bill_id}/payments", response_model=schemas.BillResponse, status_code=201)
+def add_bill_payment(bill_id: int, payment: schemas.PaymentCreate, service: BillService = Depends(get_service)):
+    bill = service.add_payment(bill_id, payment)
+    data = schemas.BillResponse.model_validate(bill).model_dump()
+    data["warnings"] = []
+    return data
+
+
+@router.patch("/{bill_id}/payments/{payment_id}/cancel", response_model=schemas.BillResponse)
+def cancel_bill_payment(bill_id: int, payment_id: int, service: BillService = Depends(get_service)):
+    bill = service.cancel_payment(bill_id, payment_id)
+    data = schemas.BillResponse.model_validate(bill).model_dump()
+    data["warnings"] = []
+    return data
 
 
 @router.get("/{bill_id}/print", response_class=HTMLResponse)

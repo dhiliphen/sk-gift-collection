@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -53,14 +54,36 @@ class Bill(Base):
     invoice_number = Column(String(20), unique=True, nullable=False, index=True)
     customer_name = Column(String(100), nullable=False)
     customer_phone = Column(String(20), nullable=True)
-    status = Column(String(20), default="paid")  # paid | cancelled
+    status = Column(String(20), default="paid")  # paid | cancelled — document lifecycle, NOT payment state
     customer_type = Column(String(20), default="retailer")  # wholesaler | dealer | retailer
     taxable_amount = Column(Float, default=0.0)
     igst_amount = Column(Float, default=0.0)
     total_amount = Column(Float, default=0.0)
+    amount_paid = Column(Float, default=0.0, nullable=False)
+    # payment_state: unpaid | partially_paid | paid — reflects money actually
+    # received. "overdue" and "cancelled" are derived at read time, not stored,
+    # so they never go stale as time passes without a write.
+    payment_state = Column(String(20), default="paid", nullable=False)
+    due_date = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     items = relationship("BillItem", back_populates="bill", cascade="all, delete-orphan")
+    payments = relationship("Payment", back_populates="bill", cascade="all, delete-orphan")
+
+    @property
+    def balance_due(self) -> float:
+        return round(self.total_amount - self.amount_paid, 2)
+
+    @property
+    def payment_status(self) -> str:
+        """Read-time derived status: unpaid | partially_paid | paid | overdue | cancelled."""
+        if self.status == "cancelled":
+            return "cancelled"
+        if self.payment_state != "paid" and self.due_date is not None:
+            now = datetime.now(timezone.utc) if self.due_date.tzinfo else datetime.utcnow()
+            if self.due_date < now:
+                return "overdue"
+        return self.payment_state
 
 
 class BillItem(Base):
@@ -80,6 +103,24 @@ class BillItem(Base):
     line_total = Column(Float, nullable=False)
 
     bill = relationship("Bill", back_populates="items")
+
+
+class Payment(Base):
+    """Append-only ledger of payments received against a bill.
+    Bill.amount_paid is a cached running total kept in sync with this table."""
+    __tablename__ = "payments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    bill_id = Column(Integer, ForeignKey("bills.id"), nullable=False, index=True)
+    amount = Column(Float, nullable=False)
+    payment_method = Column(String(20), nullable=False, default="cash")
+    reference_number = Column(String(50), nullable=True)
+    notes = Column(String(255), nullable=True)
+    status = Column(String(20), default="recorded")  # recorded | cancelled
+    payment_date = Column(DateTime(timezone=True), server_default=func.now())
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    bill = relationship("Bill", back_populates="payments")
 
 
 class Category(Base):

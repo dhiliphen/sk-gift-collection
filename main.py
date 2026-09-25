@@ -33,6 +33,16 @@ with engine.connect() as conn:
     _add_col(conn, 'purchase_bill_items', 'unit',     'VARCHAR(20)')
     _add_col(conn, 'bill_items',  'taxable_amount',   'REAL DEFAULT 0.0')
     _add_col(conn, 'bill_items',  'igst_amount',      'REAL DEFAULT 0.0')
+
+    # Payment tracking: bills created before this migration were always paid
+    # in full at creation time (the app's original cash-sale assumption), so
+    # backfill them as fully paid rather than defaulting to unpaid.
+    _bills_predate_payments = 'payment_state' not in [c['name'] for c in sa_inspect(engine).get_columns('bills')]
+    _add_col(conn, 'bills', 'amount_paid',   'REAL DEFAULT 0.0')
+    _add_col(conn, 'bills', 'payment_state', "VARCHAR(20) DEFAULT 'paid'")
+    _add_col(conn, 'bills', 'due_date',      'DATETIME')
+    if _bills_predate_payments:
+        conn.execute(text("UPDATE bills SET amount_paid = total_amount, payment_state = 'paid'"))
     conn.commit()
 
 _base = os.environ.get('BASE_DIR', os.path.dirname(os.path.abspath(__file__)))

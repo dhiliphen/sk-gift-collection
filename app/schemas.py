@@ -78,11 +78,22 @@ class BillItemCreate(BaseModel):
     unit_price: float = Field(..., ge=0)
 
 
+_PAYMENT_METHOD_PATTERN = "^(cash|upi|card|bank_transfer|cheque|other)$"
+
+
 class BillCreate(BaseModel):
     customer_name: str = Field(..., min_length=1, max_length=100)
     customer_phone: Optional[str] = None
     customer_type: str = Field(default="retailer", pattern="^(wholesaler|dealer|retailer)$")
     items: List[BillItemCreate]
+    # Payment collected at the time of sale. Defaults to the full invoice
+    # total (the app's original cash-sale behavior) when omitted, so existing
+    # callers keep working unchanged. Pass a smaller amount to record a
+    # partial/credit sale.
+    amount_paid: Optional[float] = Field(default=None, ge=0)
+    payment_method: str = Field(default="cash", pattern=_PAYMENT_METHOD_PATTERN)
+    payment_reference: Optional[str] = None
+    due_date: Optional[datetime] = None
 
 
 class BillItemResponse(BaseModel):
@@ -112,9 +123,36 @@ class BillResponse(BaseModel):
     taxable_amount: float
     igst_amount: float
     total_amount: float
+    amount_paid: float
+    balance_due: float
+    payment_status: str
+    due_date: Optional[datetime]
     created_at: Optional[datetime]
     items: List[BillItemResponse] = []
     warnings: List[str] = []
+
+    class Config:
+        from_attributes = True
+
+
+class PaymentCreate(BaseModel):
+    amount: float = Field(..., gt=0)
+    payment_method: str = Field(default="cash", pattern=_PAYMENT_METHOD_PATTERN)
+    reference_number: Optional[str] = None
+    notes: Optional[str] = None
+    payment_date: Optional[datetime] = None
+
+
+class PaymentResponse(BaseModel):
+    id: int
+    bill_id: int
+    amount: float
+    payment_method: str
+    reference_number: Optional[str]
+    notes: Optional[str]
+    status: str
+    payment_date: Optional[datetime]
+    created_at: Optional[datetime]
 
     class Config:
         from_attributes = True

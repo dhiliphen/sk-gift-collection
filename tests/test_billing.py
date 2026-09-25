@@ -310,7 +310,10 @@ def test_cancel_bill(client, db, sample_item):
     assert cancel_resp.status_code == 200
     data = cancel_resp.json()
     assert data["bill"]["status"] == "cancelled"
-    assert data["warnings"] == []
+    # Bill was paid in full at creation (default behavior) — cancellation
+    # must warn that the payment was not automatically reversed.
+    assert len(data["warnings"]) == 1
+    assert "recorded as paid" in data["warnings"][0]
 
     # Stock must be restored to original
     db.refresh(sample_item)
@@ -353,7 +356,8 @@ def test_cancel_bill_stock_restores_correctly(client, db, sample_item, sample_it
     }
     bill_id = client.post("/api/bills", json=payload, headers=AUTH_HEADERS).json()["id"]
     cancel_data = client.patch(f"/api/bills/{bill_id}/cancel", headers=AUTH_HEADERS).json()
-    assert cancel_data["warnings"] == []
+    assert len(cancel_data["warnings"]) == 1  # paid-in-full refund reminder
+    assert "recorded as paid" in cancel_data["warnings"][0]
 
     db.refresh(sample_item)
     db.refresh(sample_item_b)
@@ -393,9 +397,10 @@ def test_regression_amb003_cancel_bill_with_deleted_item_warns(client, db, sampl
     data = cancel_resp.json()
     assert data["bill"]["status"] == "cancelled"
 
-    # Must warn about the deleted item
-    assert len(data["warnings"]) == 1
-    assert item_name in data["warnings"][0]
+    # Must warn about both the deleted item and the unreversed payment
+    assert len(data["warnings"]) == 2
+    assert any(item_name in w for w in data["warnings"])
+    assert any("recorded as paid" in w for w in data["warnings"])
 
     # Stock for the surviving item (sample_item_b) must be restored
     db.refresh(sample_item_b)
