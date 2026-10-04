@@ -2458,6 +2458,8 @@
         <label>Notes</label>
         <input type="text" id="payment-notes" placeholder="Optional">
       </div>
+      <div id="payment-summary-line" style="font-family:var(--mono); font-size:0.75rem; color:var(--text-muted); margin-top:0.25rem; display:flex; justify-content:space-between;"></div>
+      <div id="payment-history-section"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('record-payment-modal')">Cancel</button>
@@ -3784,6 +3786,28 @@
     } catch (e) { showToast('Server error', 'error'); }
   }
 
+  // ── Payment history (shared between View Bill and the Record Payment modal) ──
+  function paymentHistoryTableHtml(billId, payments) {
+    if (!payments.length) return '';
+    const rows = payments.map(p => `
+      <tr style="${p.status === 'cancelled' ? 'opacity:0.5; text-decoration:line-through;' : ''}">
+        <td style="font-size:0.75rem; color:var(--text-muted);">${new Date(p.payment_date).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})}</td>
+        <td style="font-size:0.75rem; text-transform:capitalize;">${p.payment_method.replace('_',' ')}</td>
+        <td style="font-family:var(--mono); font-size:0.8rem;">${p.reference_number || '—'}</td>
+        <td style="font-family:var(--mono); color:var(--accent);">₹${p.amount.toFixed(2)}</td>
+        <td>${p.status === 'recorded'
+          ? `<button class="btn btn-ghost" style="padding:0.15rem 0.5rem; font-size:0.65rem;" onclick="cancelPayment(${billId}, ${p.id})">VOID</button>`
+          : '<span style="font-size:0.7rem; color:var(--text-muted);">voided</span>'}</td>
+      </tr>`).join('');
+    return `
+      <hr class="divider">
+      <div class="sidebar-title" style="margin-bottom:0.5rem;">History</div>
+      <table class="bill-detail-table">
+        <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Amount</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+
   // ── View Bill ────────────────────────────────────────────
   async function viewBill(id) {
     try {
@@ -3810,16 +3834,6 @@
         </tr>`).join('');
 
       const paymentLabel = (bill.payment_status || '').replace('_', ' ').toUpperCase();
-      const paymentRows = payments.map(p => `
-        <tr style="${p.status === 'cancelled' ? 'opacity:0.5; text-decoration:line-through;' : ''}">
-          <td style="font-size:0.75rem; color:var(--text-muted);">${new Date(p.payment_date).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric'})}</td>
-          <td style="font-size:0.75rem; text-transform:capitalize;">${p.payment_method.replace('_',' ')}</td>
-          <td style="font-family:var(--mono); font-size:0.8rem;">${p.reference_number || '—'}</td>
-          <td style="font-family:var(--mono); color:var(--accent);">₹${p.amount.toFixed(2)}</td>
-          <td>${p.status === 'recorded'
-            ? `<button class="btn btn-ghost" style="padding:0.15rem 0.5rem; font-size:0.65rem;" onclick="cancelPayment(${bill.id}, ${p.id})">VOID</button>`
-            : '<span style="font-size:0.7rem; color:var(--text-muted);">voided</span>'}</td>
-        </tr>`).join('');
 
       document.getElementById('view-bill-body').innerHTML = `
         <div style="display:flex; gap:2rem; margin-bottom:1rem; flex-wrap:wrap;">
@@ -3855,13 +3869,7 @@
         <div style="display:flex; justify-content:space-between; font-family:var(--mono); font-size:0.75rem; color:var(--text-muted);">
           <span>BALANCE DUE</span><span style="color:${bill.balance_due > 0 ? 'var(--warn)' : 'var(--accent)'};">₹${bill.balance_due.toFixed(2)}</span>
         </div>
-        ${payments.length ? `
-          <hr class="divider">
-          <div class="sidebar-title" style="margin-bottom:0.5rem;">Payment History</div>
-          <table class="bill-detail-table">
-            <thead><tr><th>Date</th><th>Method</th><th>Reference</th><th>Amount</th><th></th></tr></thead>
-            <tbody>${paymentRows}</tbody>
-          </table>` : ''}
+        ${paymentHistoryTableHtml(bill.id, payments)}
         ${returns.length ? `
           <hr class="divider">
           <div class="sidebar-title" style="margin-bottom:0.5rem;">Returns / Credit Notes</div>
@@ -4000,6 +4008,7 @@
       const bill = await res.json();
       if (bill.status === 'cancelled') { showToast('Cannot record a payment on a cancelled invoice', 'error'); return; }
       if (bill.balance_due <= 0) { showToast('This invoice is already fully paid', 'error'); return; }
+      const payments = await (await fetch(`/api/bills/${billId}/payments`)).json();
 
       document.getElementById('payment-bill-id').value = bill.id;
       document.getElementById('payment-invoice-number').textContent = bill.invoice_number;
@@ -4008,6 +4017,9 @@
       document.getElementById('payment-method').value = 'cash';
       document.getElementById('payment-reference').value = '';
       document.getElementById('payment-notes').value = '';
+      document.getElementById('payment-summary-line').innerHTML =
+        `<span>Paid: <b style="color:var(--accent);">₹${bill.amount_paid.toFixed(2)}</b></span><span>Outstanding: <b style="color:var(--warn);">₹${bill.balance_due.toFixed(2)}</b></span>`;
+      document.getElementById('payment-history-section').innerHTML = paymentHistoryTableHtml(bill.id, payments);
       document.getElementById('record-payment-modal').classList.add('active');
     } catch (e) { showToast('Server error', 'error'); }
   }
@@ -4043,6 +4055,10 @@
       if (!res.ok) { const e = await res.json(); showToast(e.detail || 'Error', 'error'); return; }
       await loadBills();
       if (viewingBillId == billId) await viewBill(billId);
+      if (document.getElementById('payment-bill-id').value == billId &&
+          document.getElementById('record-payment-modal').classList.contains('active')) {
+        await openRecordPayment(parseInt(billId));
+      }
       showToast('Payment voided');
     } catch (e) { showToast('Server error', 'error'); }
   }
