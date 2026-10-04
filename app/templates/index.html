@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="sandal">
+<html lang="en" data-theme="white">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,22 +9,30 @@
   :root {
     --mono: 'Space Mono', monospace;
     --sans: 'DM Sans', sans-serif;
+
+    /* Sidebar brand colors — constant across themes */
+    --sidebar-bg: #16324f;
+    --sidebar-border: rgba(255,255,255,0.08);
+    --sidebar-text: #a9bdd4;
+    --sidebar-text-active: #ffffff;
+    --sidebar-active-bg: rgba(255,255,255,0.1);
+    --sidebar-accent: #4a9eff;
   }
 
   /* ── THEMES ───────────────────────────────────────────── */
   html[data-theme="white"] {
-    --bg: #f5f6f7;
+    --bg: #f4f6fa;
     --surface: #ffffff;
-    --surface2: #f0f2f3;
-    --border: #dde1e4;
-    --accent: #00966b;
-    --accent-dim: rgba(0,150,107,0.1);
-    --warn: #e04f1a;
-    --warn-dim: rgba(224,79,26,0.1);
-    --info: #1a6fc4;
-    --info-dim: rgba(26,111,196,0.1);
-    --text: #0a0c0d;
-    --text-muted: #4a5568;
+    --surface2: #eef2f7;
+    --border: #dde3ec;
+    --accent: #2f6fb0;
+    --accent-dim: rgba(47,111,176,0.1);
+    --warn: #d64545;
+    --warn-dim: rgba(214,69,69,0.1);
+    --info: #2f6fb0;
+    --info-dim: rgba(47,111,176,0.1);
+    --text: #1b2733;
+    --text-muted: #64748b;
   }
 
   html[data-theme="sandal"] {
@@ -207,6 +215,77 @@
     border-color: var(--accent);
     color: var(--accent);
     z-index: 1;
+  }
+
+  /* ── APP SHELL / SIDEBAR NAV ──────────────────────────── */
+  .app-shell {
+    display: flex;
+    align-items: flex-start;
+  }
+
+  .sidebar-nav {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    position: sticky;
+    top: 64px;
+    height: calc(100vh - 64px);
+    overflow-y: auto;
+    z-index: 90;
+    padding: 0.75rem 0;
+  }
+
+  .main-content { flex: 1; min-width: 0; }
+
+  .sidebar-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 1.25rem;
+    color: var(--sidebar-text);
+    font-size: 0.85rem;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+
+  .sidebar-nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  .sidebar-nav-item:hover { background: rgba(255,255,255,0.05); color: var(--sidebar-text-active); }
+
+  .sidebar-nav-item.active {
+    background: var(--sidebar-active-bg);
+    color: var(--sidebar-text-active);
+    border-left-color: var(--sidebar-accent);
+    font-weight: 600;
+  }
+
+  .sidebar-toggle-btn { display: none; }
+
+  .sidebar-backdrop {
+    display: none;
+    position: fixed;
+    inset: 64px 0 0 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 85;
+  }
+
+  @media (max-width: 900px) {
+    .sidebar-toggle-btn { display: flex; }
+    .sidebar-nav {
+      position: fixed;
+      top: 64px;
+      left: 0;
+      bottom: 0;
+      width: 240px;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 2px 0 16px rgba(0,0,0,0.25);
+    }
+    .sidebar-nav.open { transform: translateX(0); }
+    .sidebar-backdrop.open { display: block; }
   }
 
   /* PAGE VIEW LAYOUT */
@@ -1316,7 +1395,10 @@
 <body>
 
 <header>
-  <div class="logo" onclick="switchView('dashboard')" style="cursor:pointer;" title="Go to Dashboard">SK<span>.</span>GIFT</div>
+  <div style="display:flex; align-items:center; gap:1rem;">
+    <button class="icon-btn sidebar-toggle-btn" onclick="toggleSidebar()" title="Menu" style="font-size:1.3rem;">☰</button>
+    <div class="logo" onclick="switchView('dashboard')" style="cursor:pointer;" title="Go to Dashboard">SK<span>.</span>GIFT</div>
+  </div>
   <div class="header-actions">
     <div class="font-controls">
       <button class="icon-btn" onclick="adjustFont(-1)" title="Decrease font size">−</button>
@@ -1325,8 +1407,8 @@
     </div>
     <div class="theme-controls">
       <button class="theme-btn" id="theme-dark"   onclick="setTheme('dark')"   title="Dark">D</button>
-      <button class="theme-btn" id="theme-white"  onclick="setTheme('white')"  title="White">W</button>
-      <button class="theme-btn active" id="theme-sandal" onclick="setTheme('sandal')" title="Sandal">S</button>
+      <button class="theme-btn active" id="theme-white"  onclick="setTheme('white')"  title="White">W</button>
+      <button class="theme-btn" id="theme-sandal" onclick="setTheme('sandal')" title="Sandal">S</button>
     </div>
     <span class="current-user-label" id="current-user-label"></span>
     <button class="btn btn-ghost" onclick="openSettings()" title="Business Settings" style="letter-spacing:1px;">⚙ SETTINGS</button>
@@ -1336,6 +1418,48 @@
   </div>
 </header>
 
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="toggleSidebar(false)"></div>
+
+<div class="app-shell">
+  <nav class="sidebar-nav" id="sidebar-nav">
+    <div class="sidebar-nav-item active" id="sidebar-item-dashboard" onclick="switchView('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      <span>Dashboard</span>
+    </div>
+    <div class="sidebar-nav-item" id="sidebar-item-inventory" onclick="switchView('inventory')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg>
+      <span>Inventory</span>
+    </div>
+    <div class="sidebar-nav-item" id="sidebar-item-billing" onclick="switchView('billing')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v5h5"/><path d="M9 13h6M9 17h6"/></svg>
+      <span>Sales Bills</span>
+    </div>
+    <div class="sidebar-nav-item" id="sidebar-item-purchases" onclick="switchView('purchases')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h2l2.4 12.4a2 2 0 002 1.6h9.2a2 2 0 002-1.6L21 7H6"/></svg>
+      <span>Purchases</span>
+    </div>
+    <div class="sidebar-nav-item" id="sidebar-item-purchase-orders" onclick="switchView('purchase-orders')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2"/><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h6"/></svg>
+      <span>Purchase Orders</span>
+    </div>
+    <div class="sidebar-nav-item" id="sidebar-item-customers" onclick="switchView('customers')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/><circle cx="17" cy="9" r="2.3"/><path d="M15.5 14.3c2.6.4 4.5 2.6 4.5 5.7"/></svg>
+      <span>Customers</span>
+    </div>
+    <div class="sidebar-nav-item" id="sidebar-item-suppliers" onclick="switchView('suppliers')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="7" width="13" height="10" rx="1"/><path d="M14 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="1.6"/><circle cx="17.5" cy="19" r="1.6"/></svg>
+      <span>Suppliers</span>
+    </div>
+    <div class="sidebar-nav-item" id="sidebar-item-settings" onclick="switchView('settings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
+      <span>Settings</span>
+    </div>
+    <div class="sidebar-nav-item" id="sidebar-item-audit" onclick="switchView('audit')" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3v6c0 5-3.5 8.5-8 11-4.5-2.5-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/></svg>
+      <span>Audit Log</span>
+    </div>
+  </nav>
+  <main class="main-content">
 
 <!-- DASHBOARD VIEW -->
 <div id="view-dashboard" class="view active">
@@ -1781,6 +1905,9 @@
     </div>
   </div>
 </div><!-- end view-purchase-orders -->
+
+  </main>
+</div><!-- /app-shell -->
 
 <!-- CREATE PURCHASE ORDER MODAL -->
 <div class="modal-overlay" id="create-po-modal">
@@ -2986,8 +3113,19 @@
       document.getElementById('view-' + v).classList.toggle('active', v === view);
       const tab = document.getElementById('tab-' + v);
       if (tab) tab.classList.toggle('active', v === view);
+      const navItem = document.getElementById('sidebar-item-' + v);
+      if (navItem) navItem.classList.toggle('active', v === view);
     });
+    toggleSidebar(false);
     if (loaders[view]) loaders[view]();
+  }
+
+  function toggleSidebar(force) {
+    const nav = document.getElementById('sidebar-nav');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const open = typeof force === 'boolean' ? force : !nav.classList.contains('open');
+    nav.classList.toggle('open', open);
+    backdrop.classList.toggle('open', open);
   }
 
   function handleNew() {
@@ -4632,7 +4770,7 @@
 
   // Restore saved preferences
   (function() {
-    const savedTheme = localStorage.getItem('invntry-theme') || 'sandal';
+    const savedTheme = localStorage.getItem('invntry-theme') || 'white';
     const savedFont  = parseInt(localStorage.getItem('invntry-font')) || 14;
     setTheme(savedTheme);
     document.documentElement.style.fontSize = savedFont + 'px';
@@ -4658,6 +4796,8 @@
     const isAdmin = currentUser.role === 'ADMIN';
     const auditCard = document.getElementById('dash-card-audit');
     if (auditCard) auditCard.style.display = isAdmin ? '' : 'none';
+    const auditNavItem = document.getElementById('sidebar-item-audit');
+    if (auditNavItem) auditNavItem.style.display = isAdmin ? '' : 'none';
     const usersSection = document.getElementById('settings-users-section');
     if (usersSection) usersSection.style.display = isAdmin ? '' : 'none';
   }

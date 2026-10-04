@@ -9,14 +9,14 @@
   :root { --mono: 'Space Mono', monospace; --sans: 'DM Sans', sans-serif; }
 
   html[data-theme="sandal"] {
-    --bg: #f5ede8;
-    --surface: #fff8f5;
-    --surface2: #ede3dc;
-    --border: #d4bfb5;
-    --accent: #c4516a;
-    --accent-dim: rgba(196,81,106,0.12);
-    --text: #2d1f1a;
-    --text-muted: #6b4f45;
+    --bg: #f4f6fa;
+    --surface: #ffffff;
+    --surface2: #eef2f7;
+    --border: #dde3ec;
+    --accent: #2f6fb0;
+    --accent-dim: rgba(47,111,176,0.1);
+    --text: #1b2733;
+    --text-muted: #64748b;
   }
 
   @media (prefers-color-scheme: dark) {
@@ -103,8 +103,8 @@
   input:focus { border-color: var(--accent); }
 
   .error-msg {
-    background: rgba(196,81,106,0.1);
-    border: 1px solid rgba(196,81,106,0.4);
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
     border-radius: 2px;
     color: var(--accent);
     font-size: 0.8rem;
