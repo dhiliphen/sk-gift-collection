@@ -388,12 +388,28 @@ class DashboardPurchases(BaseModel):
     recent_purchases: List[PurchaseResponse]
 
 
+class DashboardTrendPoint(BaseModel):
+    date: str
+    sales_amount: Money
+    received_amount: Money
+
+
+class DashboardPaymentBreakdown(BaseModel):
+    paid: int
+    partially_paid: int
+    unpaid: int
+    overdue: int
+    cancelled: int
+
+
 class DashboardResponse(BaseModel):
     today: DashboardToday
     inventory: DashboardInventory
     sales: DashboardSales
     purchases: DashboardPurchases
     alerts: List[DashboardAlert]
+    trend: List[DashboardTrendPoint]
+    payment_breakdown: DashboardPaymentBreakdown
 
 
 _ROLE_PATTERN = "^(ADMIN|MANAGER|SALES|PURCHASE|INVENTORY|ACCOUNTANT|VIEWER)$"

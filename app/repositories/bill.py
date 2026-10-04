@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 from app import models
@@ -88,3 +88,40 @@ class BillRepository(BaseRepository):
             )
             .scalar()
         ) or 0
+
+    def get_weekly_sales_trend(self) -> list[dict]:
+        """Daily sales total for the last 7 days (today inclusive, oldest
+        first), excluding cancelled bills. Days with no bills report 0 —
+        used to chart invoiced-vs-received on the dashboard."""
+        today = datetime.utcnow().date()
+        start = today - timedelta(days=6)
+        rows = (
+            self.db.query(
+                func.date(models.Bill.created_at).label("day"),
+                func.coalesce(func.sum(models.Bill.total_amount), 0).label("sales_amount"),
+            )
+            .filter(
+                models.Bill.status != "cancelled",
+                func.date(models.Bill.created_at) >= start.isoformat(),
+            )
+            .group_by("day")
+            .all()
+        )
+        by_day = {r.day: r.sales_amount for r in rows}
+        return [
+            {
+                "date": (start + timedelta(days=i)).isoformat(),
+                "sales_amount": by_day.get((start + timedelta(days=i)).isoformat(), 0),
+            }
+            for i in range(7)
+        ]
+
+    def get_payment_breakdown(self) -> dict:
+        """Counts of all bills grouped by their derived payment_status
+        (paid/partially_paid/unpaid/overdue/cancelled). Reuses the
+        Bill.payment_status property rather than re-deriving the
+        overdue/cancelled logic in SQL, so the two can't drift apart."""
+        counts = {"paid": 0, "partially_paid": 0, "unpaid": 0, "overdue": 0, "cancelled": 0}
+        for bill in self.db.query(models.Bill).all():
+            counts[bill.payment_status] += 1
+        return counts

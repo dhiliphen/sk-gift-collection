@@ -6,9 +6,9 @@ from app.repositories.payment import PaymentRepository
 
 class DashboardService:
     """Aggregates business data from across inventory, sales, and purchases
-    into a single read model for the dashboard. Deliberately just numbers
-    and short recent-activity lists, not charts — see Section 19/25 of the
-    business-system spec this app is being built toward."""
+    into a single read model for the dashboard: numbers, short
+    recent-activity lists, a 7-day sales/receipts trend, and an
+    invoice-status breakdown for the dashboard's charts."""
 
     def __init__(
         self,
@@ -31,6 +31,19 @@ class DashboardService:
         item_stats = self.item_repo.get_stats()
         overdue_count = self.bill_repo.count_overdue()
         pending_payment_count = self.bill_repo.count_pending_payment()
+
+        sales_trend = self.bill_repo.get_weekly_sales_trend()
+        received_trend = self.payment_repo.get_weekly_received_trend()
+        received_by_date = {r["date"]: r["received_amount"] for r in received_trend}
+        trend = [
+            {
+                "date": s["date"],
+                "sales_amount": s["sales_amount"],
+                "received_amount": received_by_date.get(s["date"], 0),
+            }
+            for s in sales_trend
+        ]
+        payment_breakdown = self.bill_repo.get_payment_breakdown()
 
         alerts = []
         if item_stats["low_stock_count"] > 0:
@@ -76,4 +89,6 @@ class DashboardService:
                 "recent_purchases": self.purchase_repo.get_recent(5),
             },
             "alerts": alerts,
+            "trend": trend,
+            "payment_breakdown": payment_breakdown,
         }

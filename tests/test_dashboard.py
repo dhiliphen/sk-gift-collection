@@ -1,8 +1,9 @@
 """
 Tests for GET /api/dashboard — cross-domain business snapshot (today's
 sales/purchases/payments/outstanding, inventory health, recent activity,
-alerts). See app/services/dashboard.py.
+alerts, 7-day trend, invoice-status breakdown). See app/services/dashboard.py.
 """
+from datetime import date, timedelta
 from tests.conftest import AUTH_HEADERS
 
 
@@ -20,6 +21,16 @@ def test_dashboard_empty_state(client):
     assert data["sales"]["recent_invoices"] == []
     assert data["purchases"]["recent_purchases"] == []
     assert data["alerts"] == []
+
+    assert len(data["trend"]) == 7
+    assert all(p["sales_amount"] == 0 and p["received_amount"] == 0 for p in data["trend"])
+    today = date.today()
+    expected_dates = [(today - timedelta(days=i)).isoformat() for i in range(6, -1, -1)]
+    assert [p["date"] for p in data["trend"]] == expected_dates
+
+    assert data["payment_breakdown"] == {
+        "paid": 0, "partially_paid": 0, "unpaid": 0, "overdue": 0, "cancelled": 0,
+    }
 
 
 def test_dashboard_today_sales_and_payments(client, sample_item):
@@ -157,3 +168,85 @@ def test_dashboard_fully_paid_bill_not_counted_as_outstanding(client, sample_ite
     data = client.get("/api/dashboard", headers=AUTH_HEADERS).json()
     assert data["today"]["outstanding_amount"] == 0
     assert data["sales"]["pending_payment_count"] == 0
+
+
+def test_dashboard_trend_includes_todays_sale_and_received_payment(client, sample_item):
+    client.post(
+        "/api/bills",
+        json={
+            "customer_name": "Bob", "customer_type": "retailer",
+            "items": [{"item_id": sample_item.id, "quantity": 2, "unit_price": 100.0}],
+            "amount_paid": 50.0,
+        },
+        headers=AUTH_HEADERS,
+    )
+    data = client.get("/api/dashboard", headers=AUTH_HEADERS).json()
+    today_point = data["trend"][-1]  # last entry is today (oldest-first order)
+    assert today_point["date"] == date.today().isoformat()
+    assert today_point["sales_amount"] == 236.0  # 200 taxable + 18% gst
+    assert today_point["received_amount"] == 50.0
+    # every other day in the 7-day window stays at 0
+    assert all(p["sales_amount"] == 0 for p in data["trend"][:-1])
+
+
+def test_dashboard_trend_excludes_cancelled_bill(client, sample_item):
+    bill = client.post(
+        "/api/bills",
+        json={
+            "customer_name": "Bob", "customer_type": "retailer",
+            "items": [{"item_id": sample_item.id, "quantity": 1, "unit_price": 100.0}],
+        },
+        headers=AUTH_HEADERS,
+    ).json()
+    client.patch(f"/api/bills/{bill['id']}/cancel", headers=AUTH_HEADERS)
+
+    data = client.get("/api/dashboard", headers=AUTH_HEADERS).json()
+    assert data["trend"][-1]["sales_amount"] == 0
+
+
+def test_dashboard_payment_breakdown_counts_by_status(client, sample_item):
+    # Fully paid
+    client.post(
+        "/api/bills",
+        json={
+            "customer_name": "Paid Co", "customer_type": "retailer",
+            "items": [{"item_id": sample_item.id, "quantity": 1, "unit_price": 100.0}],
+        },
+        headers=AUTH_HEADERS,
+    )
+    # Unpaid, no due date
+    client.post(
+        "/api/bills",
+        json={
+            "customer_name": "Unpaid Co", "customer_type": "retailer",
+            "items": [{"item_id": sample_item.id, "quantity": 1, "unit_price": 100.0}],
+            "amount_paid": 0.0,
+        },
+        headers=AUTH_HEADERS,
+    )
+    # Unpaid, overdue due date
+    client.post(
+        "/api/bills",
+        json={
+            "customer_name": "Overdue Co", "customer_type": "retailer",
+            "items": [{"item_id": sample_item.id, "quantity": 1, "unit_price": 100.0}],
+            "amount_paid": 0.0,
+            "due_date": "2020-01-01T00:00:00",
+        },
+        headers=AUTH_HEADERS,
+    )
+    # Cancelled
+    cancelled = client.post(
+        "/api/bills",
+        json={
+            "customer_name": "Voided Co", "customer_type": "retailer",
+            "items": [{"item_id": sample_item.id, "quantity": 1, "unit_price": 100.0}],
+        },
+        headers=AUTH_HEADERS,
+    ).json()
+    client.patch(f"/api/bills/{cancelled['id']}/cancel", headers=AUTH_HEADERS)
+
+    data = client.get("/api/dashboard", headers=AUTH_HEADERS).json()
+    assert data["payment_breakdown"] == {
+        "paid": 1, "partially_paid": 0, "unpaid": 1, "overdue": 1, "cancelled": 1,
+    }
