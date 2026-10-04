@@ -1880,11 +1880,25 @@
       <button class="btn btn-primary" onclick="openCreateBill()">+ New Bill</button>
     </div>
     <div class="page-view-card">
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon">/</span>
+          <input type="text" id="bill-search" placeholder="Search invoice #, customer, phone..." oninput="filterBills()">
+        </div>
+        <div class="filter-group" id="bill-filter-group">
+          <button class="filter-btn active" onclick="setBillFilter('all', this)">All</button>
+          <button class="filter-btn" onclick="setBillFilter('paid', this)">Paid</button>
+          <button class="filter-btn" onclick="setBillFilter('unpaid', this)">Unpaid</button>
+          <button class="filter-btn" onclick="setBillFilter('partially_paid', this)">Partial</button>
+          <button class="filter-btn" onclick="setBillFilter('overdue', this)">Overdue</button>
+          <button class="filter-btn" onclick="setBillFilter('cancelled', this)">Cancelled</button>
+        </div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th>#</th><th>Invoice No</th><th>Customer</th><th>Type</th><th>Date</th><th>Amount</th><th>Status</th><th>Actions</th>
+              <th>Invoice No</th><th>Customer</th><th>Phone</th><th>Items</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th>
             </tr>
           </thead>
           <tbody id="bills-table">
@@ -3531,22 +3545,44 @@
 
   // ── Billing CRUD ─────────────────────────────────────────
   let allBills = [];
+  let billsCurrentFilter = 'all';
   let viewingBillId = null;
 
   async function loadBills() {
     try {
       const res = await fetch('/api/bills');
       allBills = await res.json();
-      renderBills(allBills);
+      filterBills();
     } catch (e) {
       showToast('Failed to load bills', 'error');
     }
   }
 
+  function setBillFilter(filter, btn) {
+    billsCurrentFilter = filter;
+    document.querySelectorAll('#bill-filter-group .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterBills();
+  }
+
+  function filterBills() {
+    const q = (document.getElementById('bill-search').value || '').toLowerCase();
+    let filtered = allBills.filter(b =>
+      b.invoice_number.toLowerCase().includes(q) ||
+      b.customer_name.toLowerCase().includes(q) ||
+      (b.customer_phone || '').toLowerCase().includes(q)
+    );
+    if (billsCurrentFilter !== 'all') {
+      filtered = filtered.filter(b => b.payment_status === billsCurrentFilter);
+    }
+    renderBills(filtered);
+  }
+
   function renderBills(bills) {
     const tbody = document.getElementById('bills-table');
     if (!bills.length) {
-      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No bills yet</div></div></td></tr>`;
+      const msg = allBills.length ? 'No bills match your search/filter' : 'No bills yet';
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>${msg}</div></div></td></tr>`;
       return;
     }
     tbody.innerHTML = bills.map(b => {
