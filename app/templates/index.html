@@ -387,12 +387,6 @@
     margin-bottom: 2.5rem;
   }
 
-  .dashboard-cards {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 1.25rem;
-  }
-
   .dashboard-section-label {
     font-family: var(--mono);
     font-size: 0.7rem;
@@ -510,84 +504,8 @@
   .recent-row-amount { font-family: var(--mono); color: var(--accent); }
   .recent-empty { padding: 1.5rem 1.1rem; text-align: center; color: var(--text-muted); font-size: 0.8rem; }
 
-  /* TREND + DONUT CHARTS */
-  .chart-wrap, .donut-wrap { padding: 1rem 1.1rem 1.25rem; }
-
-  .trend-legend {
-    display: flex;
-    gap: 1.25rem;
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    margin-bottom: 1rem;
-    font-family: var(--mono);
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-  .trend-legend span { display: flex; align-items: center; }
-  .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 0.4rem; }
-  .legend-dot.sales { background: var(--accent); }
-  .legend-dot.received { background: var(--info); }
-
-  .trend-chart-row { display: flex; align-items: flex-end; gap: 0.5rem; height: 110px; }
-  .trend-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; }
-  .trend-bars { display: flex; align-items: flex-end; gap: 3px; height: 90px; width: 100%; justify-content: center; }
-  .trend-bar { width: 9px; border-radius: 2px 2px 0 0; min-height: 2px; transition: height 0.3s ease; }
-  .trend-bar.sales { background: var(--accent); }
-  .trend-bar.received { background: var(--info); }
-  .trend-day-label { font-family: var(--mono); font-size: 0.6rem; color: var(--text-muted); margin-top: 0.5rem; text-transform: uppercase; }
-
-  .donut-flex { display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
-  .donut-legend { display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.8rem; flex: 1; min-width: 120px; }
-  .donut-legend-row { display: flex; align-items: center; gap: 0.5rem; color: var(--text-muted); }
-  .donut-legend-row b { color: var(--text); margin-left: auto; font-family: var(--mono); }
-  .donut-legend .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
-
   @media (max-width: 700px) {
     .dashboard-columns { grid-template-columns: 1fr; }
-  }
-
-  .dash-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    padding: 1.75rem;
-    cursor: pointer;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-
-  .dash-card:hover {
-    border-color: var(--accent);
-    box-shadow: 0 2px 12px var(--accent-dim);
-  }
-
-  .dash-card.primary {
-    background: var(--accent-dim);
-    border-color: var(--accent);
-  }
-
-  .dash-card-label {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    color: var(--text-muted);
-    margin-bottom: 0.5rem;
-  }
-
-  .dash-card.primary .dash-card-label { color: var(--accent); }
-
-  .dash-card-desc {
-    font-size: 0.95rem;
-    color: var(--text);
-    margin-bottom: 1.25rem;
-    line-height: 1.5;
-  }
-
-  .dash-card-link {
-    font-family: var(--mono);
-    font-size: 0.7rem;
-    letter-spacing: 1px;
-    color: var(--accent);
   }
 
   /* SETTINGS */
@@ -1560,6 +1478,9 @@
 <!-- DASHBOARD VIEW -->
 <div id="view-dashboard" class="view active">
   <div class="dashboard-page">
+    <div class="dashboard-heading">SK GIFT COLLECTION</div>
+    <div class="dashboard-subheading">Welcome back. What would you like to do today?</div>
+
     <div class="dashboard-alerts" id="dashboard-alerts" style="display:none;"></div>
 
     <div class="dashboard-section-label">Inventory</div>
@@ -1626,19 +1547,7 @@
       </div>
     </div>
 
-    <div class="dashboard-section-label">This Week</div>
-    <div class="dashboard-columns">
-      <div class="dashboard-panel">
-        <div class="dashboard-panel-header"><span>Invoiced vs Received</span></div>
-        <div class="chart-wrap" id="trend-chart"></div>
-      </div>
-      <div class="dashboard-panel">
-        <div class="dashboard-panel-header"><span>Invoice Status</span></div>
-        <div class="donut-wrap" id="payment-donut"></div>
-      </div>
-    </div>
-
-    <div class="dashboard-section-label">Inventory</div>
+    <div class="dashboard-section-label">Stock Overview</div>
     <div class="stats-bar">
       <div class="stat-card">
         <div class="stat-label">Total Products</div>
@@ -1672,50 +1581,6 @@
           <span class="dashboard-panel-link" onclick="switchView('purchases')">View all →</span>
         </div>
         <div id="dashboard-recent-purchases"></div>
-      </div>
-    </div>
-    <div class="dashboard-heading">SK GIFT COLLECTION</div>
-    <div class="dashboard-subheading">Welcome back. What would you like to do today?</div>
-    <div class="dashboard-cards">
-      <div class="dash-card" onclick="switchView('inventory')">
-        <div class="dash-card-label">Inventory</div>
-        <div class="dash-card-desc">View stock levels, add new products and update prices.</div>
-        <div class="dash-card-link">Manage Inventory →</div>
-      </div>
-      <div class="dash-card primary" onclick="switchView('billing')">
-        <div class="dash-card-label">Sales Bills</div>
-        <div class="dash-card-desc">Create a new bill and record a sale for a customer.</div>
-        <div class="dash-card-link">Create New Bill →</div>
-      </div>
-      <div class="dash-card" onclick="switchView('purchases')">
-        <div class="dash-card-label">Purchases</div>
-        <div class="dash-card-desc">Record goods received from your suppliers.</div>
-        <div class="dash-card-link">Record Purchase →</div>
-      </div>
-      <div class="dash-card" onclick="switchView('purchase-orders')">
-        <div class="dash-card-label">Purchase Orders</div>
-        <div class="dash-card-desc">Place orders with suppliers ahead of receiving goods.</div>
-        <div class="dash-card-link">Manage Orders →</div>
-      </div>
-      <div class="dash-card" onclick="switchView('customers')">
-        <div class="dash-card-label">Customers</div>
-        <div class="dash-card-desc">View and manage your customer list.</div>
-        <div class="dash-card-link">View Customers →</div>
-      </div>
-      <div class="dash-card" onclick="switchView('suppliers')">
-        <div class="dash-card-label">Suppliers</div>
-        <div class="dash-card-desc">Manage your product suppliers and contacts.</div>
-        <div class="dash-card-link">View Suppliers →</div>
-      </div>
-      <div class="dash-card" onclick="switchView('settings')">
-        <div class="dash-card-label">Settings</div>
-        <div class="dash-card-desc">Manage product categories and units of measure.</div>
-        <div class="dash-card-link">Open Settings →</div>
-      </div>
-      <div class="dash-card" id="dash-card-audit" onclick="switchView('audit')" style="display:none;">
-        <div class="dash-card-label">Audit Log</div>
-        <div class="dash-card-desc">Review who did what — logins, sales, purchases, inventory changes.</div>
-        <div class="dash-card-link">View Audit Log →</div>
       </div>
     </div>
   </div>
@@ -3017,8 +2882,6 @@
             </div>`).join('')
         : `<div class="recent-empty">No purchases yet</div>`;
 
-      renderTrendChart(d.trend);
-      renderPaymentDonut(d.payment_breakdown);
       loadDivisionSummaries();
     } catch (e) {}
   }
@@ -3073,66 +2936,6 @@
   function toggleDivisionAccordion(div) {
     document.getElementById(`division-${div}-body`).classList.toggle('open');
     document.getElementById(`division-${div}-header`).classList.toggle('open');
-  }
-
-  function renderTrendChart(trend) {
-    const el = document.getElementById('trend-chart');
-    const max = Math.max(1, ...trend.map(t => Math.max(t.sales_amount, t.received_amount)));
-    const cols = trend.map(t => {
-      const day = new Date(t.date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short' });
-      const sH = Math.max(2, Math.round((t.sales_amount / max) * 90));
-      const rH = Math.max(2, Math.round((t.received_amount / max) * 90));
-      return `
-        <div class="trend-col" title="${day}: ₹${t.sales_amount.toLocaleString()} invoiced, ₹${t.received_amount.toLocaleString()} received">
-          <div class="trend-bars">
-            <div class="trend-bar sales" style="height:${t.sales_amount ? sH : 0}px"></div>
-            <div class="trend-bar received" style="height:${t.received_amount ? rH : 0}px"></div>
-          </div>
-          <div class="trend-day-label">${day}</div>
-        </div>`;
-    }).join('');
-    el.innerHTML = `
-      <div class="trend-legend">
-        <span><i class="legend-dot sales"></i>Invoiced</span>
-        <span><i class="legend-dot received"></i>Received</span>
-      </div>
-      <div class="trend-chart-row">${cols}</div>`;
-  }
-
-  function renderPaymentDonut(breakdown) {
-    const el = document.getElementById('payment-donut');
-    const segments = [
-      { key: 'paid', label: 'Paid', color: 'var(--accent)' },
-      { key: 'overdue', label: 'Overdue', color: 'var(--warn)' },
-      { key: 'partially_paid', label: 'Partial', color: 'var(--info)' },
-      { key: 'unpaid', label: 'Unpaid', color: 'var(--text-muted)' },
-      { key: 'cancelled', label: 'Voided', color: 'var(--border)' },
-    ];
-    const total = segments.reduce((sum, seg) => sum + (breakdown[seg.key] || 0), 0);
-    if (!total) {
-      el.innerHTML = `<div class="recent-empty">No invoices yet</div>`;
-      return;
-    }
-    const active = segments.filter(seg => breakdown[seg.key] > 0);
-    const r = 40, c = 2 * Math.PI * r;
-    let offset = 0;
-    const circles = active.map(seg => {
-      const frac = breakdown[seg.key] / total;
-      const dash = frac * c;
-      const circle = `<circle cx="50" cy="50" r="${r}" fill="none" stroke="${seg.color}" stroke-width="14" stroke-dasharray="${dash} ${c - dash}" stroke-dashoffset="${-offset}" transform="rotate(-90 50 50)"/>`;
-      offset += dash;
-      return circle;
-    }).join('');
-    const legend = active.map(seg => `
-      <div class="donut-legend-row">
-        <i class="legend-dot" style="background:${seg.color}"></i>${seg.label}
-        <b>${Math.round(breakdown[seg.key] / total * 100)}%</b>
-      </div>`).join('');
-    el.innerHTML = `
-      <div class="donut-flex">
-        <svg viewBox="0 0 100 100" width="110" height="110">${circles}</svg>
-        <div class="donut-legend">${legend}</div>
-      </div>`;
   }
 
   async function openPurchaseFromDashboard(id) {
