@@ -1723,6 +1723,12 @@
       <button class="btn btn-primary" onclick="document.getElementById('add-supplier-modal').classList.add('active')">+ New Supplier</button>
     </div>
     <div class="page-view-card">
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon">/</span>
+          <input type="text" id="supplier-search" placeholder="Search name, contact, phone, email..." oninput="filterSuppliers()">
+        </div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -1852,6 +1858,18 @@
       <button class="btn btn-primary" onclick="document.getElementById('add-customer-modal').classList.add('active')">+ New Customer</button>
     </div>
     <div class="page-view-card">
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon">/</span>
+          <input type="text" id="customer-search" placeholder="Search name, phone, email..." oninput="filterCustomers()">
+        </div>
+        <div class="filter-group" id="customer-filter-group">
+          <button class="filter-btn active" onclick="setCustomerFilter('all', this)">All</button>
+          <button class="filter-btn" onclick="setCustomerFilter('wholesaler', this)">Wholesaler</button>
+          <button class="filter-btn" onclick="setCustomerFilter('dealer', this)">Dealer</button>
+          <button class="filter-btn" onclick="setCustomerFilter('retailer', this)">Retailer</button>
+        </div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -1922,6 +1940,17 @@
       <button class="btn btn-primary" onclick="openCreatePurchase()">+ New Purchase</button>
     </div>
     <div class="page-view-card">
+      <div class="toolbar">
+        <div class="search-box">
+          <span class="search-icon">/</span>
+          <input type="text" id="purchase-search" placeholder="Search purchase #, supplier, supplier invoice..." oninput="filterPurchases()">
+        </div>
+        <div class="filter-group" id="purchase-filter-group">
+          <button class="filter-btn active" onclick="setPurchaseFilter('all', this)">All</button>
+          <button class="filter-btn" onclick="setPurchaseFilter('received', this)">Received</button>
+          <button class="filter-btn" onclick="setPurchaseFilter('cancelled', this)">Cancelled</button>
+        </div>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -3265,7 +3294,7 @@
     try {
       const res = await fetch('/api/suppliers');
       allSuppliers = await res.json();
-      renderSuppliers(allSuppliers);
+      filterSuppliers();
       document.getElementById('suppliers-datalist').innerHTML =
         allSuppliers.map(s => `<option value="${s.name}">`).join('');
     } catch (e) {
@@ -3273,10 +3302,22 @@
     }
   }
 
+  function filterSuppliers() {
+    const q = (document.getElementById('supplier-search').value || '').toLowerCase();
+    const filtered = allSuppliers.filter(s =>
+      s.name.toLowerCase().includes(q) ||
+      (s.contact_person || '').toLowerCase().includes(q) ||
+      (s.phone || '').toLowerCase().includes(q) ||
+      (s.email || '').toLowerCase().includes(q)
+    );
+    renderSuppliers(filtered);
+  }
+
   function renderSuppliers(suppliers) {
     const tbody = document.getElementById('suppliers-table');
     if (!suppliers.length) {
-      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No suppliers found</div></div></td></tr>`;
+      const msg = allSuppliers.length ? 'No suppliers match your search' : 'No suppliers found';
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>${msg}</div></div></td></tr>`;
       return;
     }
     tbody.innerHTML = suppliers.map(s => `
@@ -4252,22 +4293,44 @@
 
   // ── Purchases CRUD ───────────────────────────────────────
   let allPurchases = [];
+  let purchasesCurrentFilter = 'all';
   let currentPurchaseId = null;
 
   async function loadPurchases() {
     try {
       const res = await fetch('/api/purchases');
       allPurchases = await res.json();
-      renderPurchases(allPurchases);
+      filterPurchases();
     } catch (e) {
       showToast('Failed to load purchases', 'error');
     }
   }
 
+  function setPurchaseFilter(filter, btn) {
+    purchasesCurrentFilter = filter;
+    document.querySelectorAll('#purchase-filter-group .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterPurchases();
+  }
+
+  function filterPurchases() {
+    const q = (document.getElementById('purchase-search').value || '').toLowerCase();
+    let filtered = allPurchases.filter(p =>
+      p.purchase_number.toLowerCase().includes(q) ||
+      p.supplier_name.toLowerCase().includes(q) ||
+      (p.supplier_invoice || '').toLowerCase().includes(q)
+    );
+    if (purchasesCurrentFilter !== 'all') {
+      filtered = filtered.filter(p => p.status === purchasesCurrentFilter);
+    }
+    renderPurchases(filtered);
+  }
+
   function renderPurchases(purchases) {
     const tbody = document.getElementById('purchases-table');
     if (!purchases.length) {
-      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No purchase bills yet</div></div></td></tr>`;
+      const msg = allPurchases.length ? 'No purchases match your search/filter' : 'No purchase bills yet';
+      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">[  ]</div><div>${msg}</div></div></td></tr>`;
       return;
     }
     tbody.innerHTML = purchases.map(p => `
@@ -4779,12 +4842,13 @@
 
   // ── Customers CRUD ───────────────────────────────────────
   let allCustomers = [];
+  let customersCurrentFilter = 'all';
 
   async function loadCustomers() {
     try {
       const res = await fetch('/api/customers');
       allCustomers = await res.json();
-      renderCustomers(allCustomers);
+      filterCustomers();
       document.getElementById('customers-datalist').innerHTML =
         allCustomers.map(c => `<option value="${c.name}">`).join('');
     } catch (e) {
@@ -4792,10 +4856,31 @@
     }
   }
 
+  function setCustomerFilter(filter, btn) {
+    customersCurrentFilter = filter;
+    document.querySelectorAll('#customer-filter-group .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    filterCustomers();
+  }
+
+  function filterCustomers() {
+    const q = (document.getElementById('customer-search').value || '').toLowerCase();
+    let filtered = allCustomers.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      (c.phone || '').toLowerCase().includes(q) ||
+      (c.email || '').toLowerCase().includes(q)
+    );
+    if (customersCurrentFilter !== 'all') {
+      filtered = filtered.filter(c => c.customer_type === customersCurrentFilter);
+    }
+    renderCustomers(filtered);
+  }
+
   function renderCustomers(customers) {
     const tbody = document.getElementById('customers-table');
     if (!customers.length) {
-      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>No customers found</div></div></td></tr>`;
+      const msg = allCustomers.length ? 'No customers match your search/filter' : 'No customers found';
+      tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">[  ]</div><div>${msg}</div></div></td></tr>`;
       return;
     }
     tbody.innerHTML = customers.map(c => `
