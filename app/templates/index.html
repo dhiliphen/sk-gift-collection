@@ -9,14 +9,6 @@
   :root {
     --mono: 'Space Mono', monospace;
     --sans: 'DM Sans', sans-serif;
-
-    /* Sidebar brand colors — constant across themes */
-    --sidebar-bg: #16324f;
-    --sidebar-border: rgba(255,255,255,0.08);
-    --sidebar-text: #a9bdd4;
-    --sidebar-text-active: #ffffff;
-    --sidebar-active-bg: rgba(255,255,255,0.1);
-    --sidebar-accent: #4a9eff;
   }
 
   /* ── THEMES ───────────────────────────────────────────── */
@@ -33,6 +25,14 @@
     --info-dim: rgba(47,111,176,0.1);
     --text: #1b2733;
     --text-muted: #64748b;
+
+    /* Sidebar: dark navy, matches the blue theme's own accent family */
+    --sidebar-bg: #16324f;
+    --sidebar-border: rgba(255,255,255,0.08);
+    --sidebar-text: #a9bdd4;
+    --sidebar-text-active: #ffffff;
+    --sidebar-active-bg: rgba(255,255,255,0.1);
+    --sidebar-accent: #4a9eff;
   }
 
   html[data-theme="sandal"] {
@@ -48,6 +48,14 @@
     --info-dim: rgba(58,110,168,0.12);
     --text: #2d1f1a;
     --text-muted: #9a7b72;
+
+    /* Sidebar: dark warm ink tone (sandal's own --text color), pink accent */
+    --sidebar-bg: #2d1f1a;
+    --sidebar-border: rgba(255,255,255,0.08);
+    --sidebar-text: #d4bfb5;
+    --sidebar-text-active: #fff8f5;
+    --sidebar-active-bg: rgba(196,81,106,0.25);
+    --sidebar-accent: #e28097;
   }
 
   html[data-theme="dark"] {
@@ -63,6 +71,14 @@
     --info-dim: rgba(74,158,255,0.12);
     --text: #ffffff;
     --text-muted: #a0a8ab;
+
+    /* Sidebar: a touch darker than the page background, green accent */
+    --sidebar-bg: #090a0a;
+    --sidebar-border: rgba(255,255,255,0.08);
+    --sidebar-text: #a0a8ab;
+    --sidebar-text-active: #ffffff;
+    --sidebar-active-bg: rgba(0,229,160,0.12);
+    --sidebar-accent: #00e5a0;
   }
 
   /* ── FONT SIZE ────────────────────────────────────────── */
