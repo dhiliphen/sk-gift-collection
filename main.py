@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from app.database import engine, SessionLocal
 from app.models import Base, User
 from app.routers import inventory, suppliers, categories, units, billing, customers, purchases, dashboard, purchase_orders
-from app.routers import auth as auth_router, users, audit_log
+from app.routers import auth as auth_router, users, audit_log, admin
 from app.auth import is_valid_session
 from app.security import hash_password
 from sqlalchemy import text, inspect as sa_inspect
@@ -104,6 +104,7 @@ app.include_router(purchase_orders.router)
 app.include_router(dashboard.router)
 app.include_router(users.router)
 app.include_router(audit_log.router)
+app.include_router(admin.router)
 
 
 @app.get("/", response_class=HTMLResponse)
