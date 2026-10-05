@@ -16,12 +16,15 @@ class ItemRepository(BaseRepository):
         self,
         category: Optional[str] = None,
         low_stock: Optional[bool] = None,
+        division: Optional[str] = None,
     ) -> list[models.Item]:
         q = self.db.query(models.Item)
         if category:
             q = q.filter(models.Item.category == category)
         if low_stock:
             q = q.filter(models.Item.quantity <= models.Item.low_stock_threshold)
+        if division:
+            q = q.filter(models.Item.division == division)
         return q.all()
 
     def get_by_ids(self, ids: list[int]) -> dict[int, models.Item]:

@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -16,7 +17,12 @@ def get_service(db: Session = Depends(get_db)) -> PurchaseOrderService:
 
 
 @router.get("", response_model=list[schemas.PurchaseOrderResponse])
-def get_all_purchase_orders(service: PurchaseOrderService = Depends(get_service)):
+def get_all_purchase_orders(
+    division: Optional[str] = None,
+    service: PurchaseOrderService = Depends(get_service),
+):
+    if division:
+        return service.get_by_division(division)
     return service.get_all()
 
 

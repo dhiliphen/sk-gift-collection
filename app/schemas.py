@@ -1,8 +1,10 @@
 from decimal import Decimal
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Literal
 from datetime import datetime
 from app.money import Money
+
+Division = Literal["agarbattis", "toys"]
 
 
 class PurchaseItemCreate(BaseModel):
@@ -291,6 +293,7 @@ class SupplierResponse(BaseModel):
 class ItemCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     category: Optional[str] = None
+    division: Optional[Division] = None
     supplier: Optional[str] = None
     quantity: int = Field(default=0, ge=0)
     unit: str = Field(default="pcs")
@@ -306,6 +309,7 @@ class ItemCreate(BaseModel):
 class ItemUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     category: Optional[str] = None
+    division: Optional[Division] = None
     supplier: Optional[str] = None
     quantity: Optional[int] = Field(None, ge=0)
     unit: Optional[str] = None
@@ -342,6 +346,7 @@ class ItemResponse(BaseModel):
     id: int
     name: str
     category: Optional[str]
+    division: Optional[str]
     supplier: Optional[str]
     quantity: int
     unit: str

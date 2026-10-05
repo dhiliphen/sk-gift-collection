@@ -25,6 +25,7 @@ with engine.connect() as conn:
     _add_col(conn, 'inventory',   'dealer_price',     'REAL DEFAULT 0.0')
     _add_col(conn, 'inventory',   'hsn_code',         'VARCHAR(20)')
     _add_col(conn, 'inventory',   'gst_rate',         'REAL DEFAULT 0.0')
+    _add_col(conn, 'inventory',   'division',         'VARCHAR(20)')
     _add_col(conn, 'bills',       'customer_type',    "VARCHAR(20) DEFAULT 'retailer'")
     _add_col(conn, 'bills',       'taxable_amount',   'REAL DEFAULT 0.0')
     _add_col(conn, 'bills',       'igst_amount',      'REAL DEFAULT 0.0')

@@ -19,9 +19,10 @@ def get_service(db: Session = Depends(get_db)) -> ItemService:
 def get_all_items(
     category: Optional[str] = None,
     low_stock: Optional[bool] = None,
+    division: Optional[str] = None,
     service: ItemService = Depends(get_service),
 ):
-    return service.get_all(category=category, low_stock=low_stock)
+    return service.get_all(category=category, low_stock=low_stock, division=division)
 
 
 @router.get("/items/{item_id}", response_model=schemas.ItemResponse)

@@ -13,6 +13,25 @@ class PurchaseOrderService:
     def get_all(self) -> list[models.PurchaseOrder]:
         return self.order_repo.get_all_ordered()
 
+    def get_by_division(self, division: str) -> list[models.PurchaseOrder]:
+        """Orders aren't tagged with a division directly — a PO belongs to a
+        division if at least one of its line items resolves to an Item in
+        that division (an order can span both; it then shows under each).
+        Lines with no item_id, or whose item was deleted, can't be
+        classified and are simply not matched."""
+        orders = self.order_repo.get_all_ordered()
+        all_item_ids = {
+            line.item_id for order in orders for line in order.items if line.item_id
+        }
+        items_by_id = self.item_repo.get_by_ids(list(all_item_ids))
+        return [
+            order for order in orders
+            if any(
+                items_by_id.get(line.item_id) and items_by_id[line.item_id].division == division
+                for line in order.items
+            )
+        ]
+
     def get_by_id(self, order_id: int) -> models.PurchaseOrder:
         order = self.order_repo.get_with_items(order_id)
         if not order:

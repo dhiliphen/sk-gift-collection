@@ -213,6 +213,10 @@ class Item(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False, index=True)
     category = Column(String(50), nullable=True)
+    # Which shop this product belongs to: agarbattis | toys. Separate from
+    # `category` (finer product grouping, e.g. "Scented", "Plush") — nullable
+    # because existing items predate this field and aren't auto-classified.
+    division = Column(String(20), nullable=True)
     supplier = Column(String(100), nullable=True)
     quantity = Column(Integer, default=0, nullable=False)
     unit = Column(String(20), default="pcs")

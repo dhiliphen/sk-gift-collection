@@ -405,6 +405,54 @@
   .alert-item.warning { background: var(--warn-dim); color: var(--warn); border-color: var(--warn); }
   .alert-item.info { background: var(--info-dim); color: var(--info); border-color: var(--info); }
 
+  /* DIVISION ACCORDIONS (Agarbattis / Toys) */
+  .division-accordion {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+  }
+  .division-accordion-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.25rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .division-accordion-title {
+    font-family: var(--mono);
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--text);
+  }
+  .division-accordion-count {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.25rem;
+  }
+  .division-accordion-chevron {
+    color: var(--text-muted);
+    font-family: var(--mono);
+    transition: transform 0.2s;
+  }
+  .division-accordion-header.open .division-accordion-chevron { transform: rotate(180deg); }
+  .division-accordion-body { display: none; border-top: 1px solid var(--border); }
+  .division-accordion-body.open { display: block; }
+  .division-section-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 0.65rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.85rem 1.1rem 0.4rem;
+  }
+
   .dashboard-columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -1498,6 +1546,50 @@
   <div class="dashboard-page">
     <div class="dashboard-alerts" id="dashboard-alerts" style="display:none;"></div>
 
+    <div class="dashboard-section-label">Inventory</div>
+    <div class="division-accordion" id="division-agarbattis-accordion">
+      <div class="division-accordion-header" id="division-agarbattis-header" onclick="toggleDivisionAccordion('agarbattis')">
+        <div>
+          <div class="division-accordion-title">Agarbattis</div>
+          <div class="division-accordion-count" id="division-agarbattis-count">Loading…</div>
+        </div>
+        <div class="division-accordion-chevron">▾</div>
+      </div>
+      <div class="division-accordion-body" id="division-agarbattis-body">
+        <div class="division-section-label">
+          <span>Purchase Orders</span>
+          <span class="dashboard-panel-link" onclick="event.stopPropagation(); switchView('purchase-orders')">View all →</span>
+        </div>
+        <div id="division-agarbattis-po-list"></div>
+        <div class="division-section-label">
+          <span>Inventory</span>
+          <span class="dashboard-panel-link" onclick="event.stopPropagation(); switchView('inventory'); document.getElementById('filter-div-agarbattis').click();">View all →</span>
+        </div>
+        <div id="division-agarbattis-item-list"></div>
+      </div>
+    </div>
+    <div class="division-accordion" id="division-toys-accordion">
+      <div class="division-accordion-header" id="division-toys-header" onclick="toggleDivisionAccordion('toys')">
+        <div>
+          <div class="division-accordion-title">Toys</div>
+          <div class="division-accordion-count" id="division-toys-count">Loading…</div>
+        </div>
+        <div class="division-accordion-chevron">▾</div>
+      </div>
+      <div class="division-accordion-body" id="division-toys-body">
+        <div class="division-section-label">
+          <span>Purchase Orders</span>
+          <span class="dashboard-panel-link" onclick="event.stopPropagation(); switchView('purchase-orders')">View all →</span>
+        </div>
+        <div id="division-toys-po-list"></div>
+        <div class="division-section-label">
+          <span>Inventory</span>
+          <span class="dashboard-panel-link" onclick="event.stopPropagation(); switchView('inventory'); document.getElementById('filter-div-toys').click();">View all →</span>
+        </div>
+        <div id="division-toys-item-list"></div>
+      </div>
+    </div>
+
     <div class="dashboard-section-label">Today</div>
     <div class="stats-bar">
       <div class="stat-card">
@@ -1677,6 +1769,8 @@
         <div class="filter-group" id="filter-group">
           <button class="filter-btn active" onclick="setFilter('all', this)">All</button>
           <button class="filter-btn" onclick="setFilter('low', this)">⚠ Low Stock</button>
+          <button class="filter-btn" id="filter-div-agarbattis" onclick="setFilter('div:agarbattis', this)">Agarbattis</button>
+          <button class="filter-btn" id="filter-div-toys" onclick="setFilter('div:toys', this)">Toys</button>
         </div>
         <button class="btn btn-ghost" onclick="exportInventoryExcel()" style="white-space:nowrap;">↓ Export Excel</button>
       </div>
@@ -2151,13 +2245,23 @@
           <select id="edit-category"><option value="">— select —</option></select>
         </div>
         <div class="form-group">
+          <label>Division (Shop)</label>
+          <select id="edit-division">
+            <option value="">— unassigned —</option>
+            <option value="agarbattis">Agarbattis</option>
+            <option value="toys">Toys</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
           <label>Unit</label>
           <select id="edit-unit"><option value="">— select —</option></select>
         </div>
-      </div>
-      <div class="form-group">
-        <label>Supplier</label>
-        <input type="text" id="edit-supplier" list="suppliers-datalist">
+        <div class="form-group">
+          <label>Supplier</label>
+          <input type="text" id="edit-supplier" list="suppliers-datalist">
+        </div>
       </div>
       <div class="form-row">
         <div class="form-group">
@@ -2684,19 +2788,30 @@
           <select id="f-category"><option value="">— select —</option></select>
         </div>
         <div class="form-group">
-          <label>Unit</label>
-          <select id="f-unit"><option value="">— select —</option></select>
+          <label>Division (Shop)</label>
+          <select id="f-division">
+            <option value="">— unassigned —</option>
+            <option value="agarbattis">Agarbattis</option>
+            <option value="toys">Toys</option>
+          </select>
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
+          <label>Unit</label>
+          <select id="f-unit"><option value="">— select —</option></select>
+        </div>
+        <div class="form-group">
           <label>Supplier</label>
           <input type="text" id="f-supplier" placeholder="Supplier name" list="suppliers-datalist">
         </div>
+      </div>
+      <div class="form-row">
         <div class="form-group">
           <label>Opening Quantity</label>
           <input type="number" id="f-quantity" placeholder="0" min="0">
         </div>
+        <div class="form-group"></div>
       </div>
 
       <!-- Pricing -->
@@ -2888,7 +3003,60 @@
 
       renderTrendChart(d.trend);
       renderPaymentDonut(d.payment_breakdown);
+      loadDivisionSummaries();
     } catch (e) {}
+  }
+
+  // ── Division accordions (Agarbattis / Toys) ───────────────
+  let divisionCache = { agarbattis: null, toys: null };
+
+  async function loadDivisionSummaries() {
+    for (const div of ['agarbattis', 'toys']) {
+      try {
+        const [items, orders] = await Promise.all([
+          fetch(`/api/items?division=${div}`).then(r => r.json()),
+          fetch(`/api/purchase-orders?division=${div}`).then(r => r.json()),
+        ]);
+        divisionCache[div] = { items, orders };
+        renderDivisionAccordion(div);
+      } catch (e) {}
+    }
+  }
+
+  function renderDivisionAccordion(div) {
+    const data = divisionCache[div];
+    if (!data) return;
+    document.getElementById(`division-${div}-count`).textContent =
+      `${data.items.length} item${data.items.length !== 1 ? 's' : ''} · ${data.orders.length} purchase order${data.orders.length !== 1 ? 's' : ''}`;
+
+    const poList = document.getElementById(`division-${div}-po-list`);
+    poList.innerHTML = data.orders.length
+      ? data.orders.slice(0, 5).map(o => `
+          <div class="recent-row" onclick="switchView('purchase-orders')">
+            <div>
+              <div class="recent-row-main">${o.po_number} · ${o.supplier_name}</div>
+              <div class="recent-row-sub">${o.status}</div>
+            </div>
+            <div class="recent-row-amount">₹${o.total_amount.toLocaleString()}</div>
+          </div>`).join('')
+      : `<div class="recent-empty">No purchase orders yet</div>`;
+
+    const itemList = document.getElementById(`division-${div}-item-list`);
+    itemList.innerHTML = data.items.length
+      ? data.items.slice(0, 8).map(i => `
+          <div class="recent-row" onclick="switchView('inventory'); document.getElementById('filter-div-${div}').click();">
+            <div>
+              <div class="recent-row-main">${i.name}</div>
+              <div class="recent-row-sub">${i.category || 'Uncategorized'}</div>
+            </div>
+            <div class="recent-row-amount" style="${i.quantity <= i.low_stock_threshold ? 'color:var(--warn);' : ''}">${i.quantity} ${i.unit}</div>
+          </div>`).join('')
+      : `<div class="recent-empty">No items in this division yet</div>`;
+  }
+
+  function toggleDivisionAccordion(div) {
+    document.getElementById(`division-${div}-body`).classList.toggle('open');
+    document.getElementById(`division-${div}-header`).classList.toggle('open');
   }
 
   function renderTrendChart(trend) {
@@ -3006,6 +3174,7 @@
           <td>
             <div class="item-name">${item.name}</div>
             ${item.category ? `<div class="item-category">${item.category}</div>` : ''}
+            ${item.division ? `<div class="item-category" style="color:var(--info);">${item.division === 'agarbattis' ? 'Agarbattis' : 'Toys'}</div>` : ''}
           </td>
           <td style="color:var(--text-muted); font-size:0.8rem;">${item.supplier || '—'}</td>
           <td>
@@ -3047,6 +3216,9 @@
     } else if (currentFilter.startsWith('cat:')) {
       const cat = currentFilter.slice(4);
       filtered = filtered.filter(i => (i.category || '') === cat);
+    } else if (currentFilter.startsWith('div:')) {
+      const div = currentFilter.slice(4);
+      filtered = filtered.filter(i => (i.division || '') === div);
     }
     renderTable(filtered);
   }
@@ -3072,6 +3244,7 @@
     const payload = {
       name,
       category: document.getElementById('f-category').value || null,
+      division: document.getElementById('f-division').value || null,
       supplier: document.getElementById('f-supplier').value.trim() || null,
       quantity: parseInt(document.getElementById('f-quantity').value) || 0,
       unit: document.getElementById('f-unit').value || 'pcs',
@@ -3105,7 +3278,7 @@
   }
 
   function clearForm() {
-    ['f-name','f-category','f-supplier','f-quantity','f-cost','f-wholesale','f-dealer','f-selling','f-hsn','f-threshold'].forEach(id => {
+    ['f-name','f-category','f-division','f-supplier','f-quantity','f-cost','f-wholesale','f-dealer','f-selling','f-hsn','f-threshold'].forEach(id => {
       document.getElementById(id).value = '';
     });
   }
@@ -3121,6 +3294,7 @@
     document.getElementById('edit-id').value = item.id;
     document.getElementById('edit-name').value = item.name;
     document.getElementById('edit-category').value = item.category || '';
+    document.getElementById('edit-division').value = item.division || '';
     document.getElementById('edit-supplier').value = item.supplier || '';
     document.getElementById('edit-unit').value = item.unit || '';
     document.getElementById('edit-quantity').value = item.quantity;
@@ -3139,6 +3313,7 @@
     const payload = {
       name: document.getElementById('edit-name').value.trim(),
       category: document.getElementById('edit-category').value || null,
+      division: document.getElementById('edit-division').value || null,
       supplier: document.getElementById('edit-supplier').value.trim() || null,
       unit: document.getElementById('edit-unit').value || 'pcs',
       quantity: parseInt(document.getElementById('edit-quantity').value),

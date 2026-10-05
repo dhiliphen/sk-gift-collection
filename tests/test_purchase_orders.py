@@ -349,3 +349,60 @@ def test_direct_receipt_without_po_still_works(client, db, sample_item):
 
     db.refresh(sample_item)
     assert sample_item.quantity == original_qty + 10
+
+
+# ---------------------------------------------------------------------------
+# Division filter — derived from the divisions of a PO's line items
+# ---------------------------------------------------------------------------
+
+def test_purchase_order_division_filter_matches_item_division(client, db):
+    from app import models
+    agarbatti_item = models.Item(name="Rose Agarbatti", division="agarbattis", unit="pcs")
+    toy_item = models.Item(name="Spinning Top", division="toys", unit="pcs")
+    db.add_all([agarbatti_item, toy_item])
+    db.commit()
+    db.refresh(agarbatti_item)
+
+    client.post("/api/purchase-orders", json=_po_payload(agarbatti_item.id), headers=AUTH_HEADERS)
+
+    agarbatti_pos = client.get("/api/purchase-orders", params={"division": "agarbattis"}, headers=AUTH_HEADERS).json()
+    assert len(agarbatti_pos) == 1
+
+    toy_pos = client.get("/api/purchase-orders", params={"division": "toys"}, headers=AUTH_HEADERS).json()
+    assert toy_pos == []
+
+
+def test_purchase_order_with_mixed_division_items_shows_under_both(client, db):
+    from app import models
+    agarbatti_item = models.Item(name="Jasmine Agarbatti", division="agarbattis", unit="pcs")
+    toy_item = models.Item(name="Toy Drum", division="toys", unit="pcs")
+    db.add_all([agarbatti_item, toy_item])
+    db.commit()
+    db.refresh(agarbatti_item)
+    db.refresh(toy_item)
+
+    client.post(
+        "/api/purchase-orders",
+        json={
+            "supplier_name": "Mixed Supplier",
+            "items": [
+                {"item_id": agarbatti_item.id, "quantity": 10, "unit_cost": 5.0},
+                {"item_id": toy_item.id, "quantity": 5, "unit_cost": 20.0},
+            ],
+        },
+        headers=AUTH_HEADERS,
+    )
+
+    assert len(client.get("/api/purchase-orders", params={"division": "agarbattis"}, headers=AUTH_HEADERS).json()) == 1
+    assert len(client.get("/api/purchase-orders", params={"division": "toys"}, headers=AUTH_HEADERS).json()) == 1
+
+
+def test_purchase_order_with_unclassified_item_matches_no_division(client, sample_item):
+    """sample_item has no division set — a PO for it shouldn't be guessed
+    into either accordion."""
+    client.post("/api/purchase-orders", json=_po_payload(sample_item.id), headers=AUTH_HEADERS)
+
+    assert client.get("/api/purchase-orders", params={"division": "agarbattis"}, headers=AUTH_HEADERS).json() == []
+    assert client.get("/api/purchase-orders", params={"division": "toys"}, headers=AUTH_HEADERS).json() == []
+    # but it's still in the unfiltered list
+    assert len(client.get("/api/purchase-orders", headers=AUTH_HEADERS).json()) == 1

@@ -12,8 +12,9 @@ class ItemService:
         self,
         category: Optional[str] = None,
         low_stock: Optional[bool] = None,
+        division: Optional[str] = None,
     ) -> list[models.Item]:
-        return self.repo.get_filtered(category=category, low_stock=low_stock)
+        return self.repo.get_filtered(category=category, low_stock=low_stock, division=division)
 
     def get_by_id(self, item_id: int) -> models.Item:
         item = self.repo.get_by_id(item_id)

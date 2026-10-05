@@ -543,3 +543,55 @@ def test_movements_ordered_chronologically(client, sample_item):
     movements = client.get(f"/api/items/{sample_item.id}/movements", headers=AUTH_HEADERS).json()
     assert [m["quantity_change"] for m in movements] == [10, -3]
     assert movements[0]["quantity_after"] == movements[1]["quantity_before"]
+
+
+# ---------------------------------------------------------------------------
+# Division (agarbattis / toys) — which shop a product belongs to
+# ---------------------------------------------------------------------------
+
+def test_create_item_with_division(client):
+    response = client.post(
+        "/api/items",
+        json={"name": "Sandalwood Sticks", "division": "agarbattis", "unit": "pcs"},
+        headers=AUTH_HEADERS,
+    )
+    assert response.status_code == 201
+    assert response.json()["division"] == "agarbattis"
+
+
+def test_create_item_without_division_defaults_to_null(client, sample_item):
+    assert sample_item.division is None
+    response = client.get(f"/api/items/{sample_item.id}", headers=AUTH_HEADERS)
+    assert response.json()["division"] is None
+
+
+def test_create_item_invalid_division_rejected(client):
+    response = client.post(
+        "/api/items",
+        json={"name": "Bad Division Item", "division": "electronics", "unit": "pcs"},
+        headers=AUTH_HEADERS,
+    )
+    assert response.status_code == 422
+
+
+def test_update_item_division(client, sample_item):
+    response = client.put(
+        f"/api/items/{sample_item.id}", json={"division": "toys"}, headers=AUTH_HEADERS,
+    )
+    assert response.status_code == 200
+    assert response.json()["division"] == "toys"
+
+
+def test_filter_items_by_division(client):
+    client.post("/api/items", json={"name": "Toy Car", "division": "toys", "unit": "pcs"}, headers=AUTH_HEADERS)
+    client.post("/api/items", json={"name": "Agarbatti Box", "division": "agarbattis", "unit": "pcs"}, headers=AUTH_HEADERS)
+    client.post("/api/items", json={"name": "Unclassified Item", "unit": "pcs"}, headers=AUTH_HEADERS)
+
+    toys = client.get("/api/items", params={"division": "toys"}, headers=AUTH_HEADERS).json()
+    assert [i["name"] for i in toys] == ["Toy Car"]
+
+    agarbattis = client.get("/api/items", params={"division": "agarbattis"}, headers=AUTH_HEADERS).json()
+    assert [i["name"] for i in agarbattis] == ["Agarbatti Box"]
+
+    everything = client.get("/api/items", headers=AUTH_HEADERS).json()
+    assert len(everything) == 3
